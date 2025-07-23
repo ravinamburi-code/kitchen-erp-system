@@ -469,83 +469,117 @@ const handlePrepSubmit = async () => {  // ← ADD async
   }
 };
 
-  const handleDispatchSubmit = () => {
-    if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
-      const eastham = parseInt(newDispatchEntry.easthamSent) || 0;
-      const bethnal = parseInt(newDispatchEntry.bethnalSent) || 0;
-      const coldRoom = parseInt(newDispatchEntry.coldRoomStock) || 0;
-      const total = parseInt(newDispatchEntry.totalCooked);
+const handleDispatchSubmit = async () => {  // ← Add async
+if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
+  const eastham = parseInt(newDispatchEntry.easthamSent) || 0;
+  const bethnal = parseInt(newDispatchEntry.bethnalSent) || 0;
+  const coldRoom = parseInt(newDispatchEntry.coldRoomStock) || 0;
+  const total = parseInt(newDispatchEntry.totalCooked);
 
-      // Strict validation - must equal exactly
-      if (eastham + bethnal + coldRoom !== total) {
-        alert(`❌ Invalid Distribution!\n\nTotal Available: ${total} portions\nYour Distribution: ${eastham + bethnal + coldRoom} portions\n\nEastham (${eastham}) + Bethnal Green (${bethnal}) + Cold Room (${coldRoom}) must equal ${total}`);
-        return;
-      }
+  // Strict validation - must equal exactly
+  if (eastham + bethnal + coldRoom !== total) {
+    alert(`❌ Invalid Distribution!\n\nTotal Available: ${total} portions\nYour Distribution: ${eastham + bethnal + coldRoom} portions\n\nEastham (${eastham}) + Bethnal Green (${bethnal}) + Cold Room (${coldRoom}) must equal ${total}`);
+    return;
+  }
 
-      const newEntry = {
-        id: dispatch.length > 0 ? Math.max(...dispatch.map(d => d.id)) + 1 : 1,
-        date: new Date().toISOString().split('T')[0],
-        dishName: newDispatchEntry.dishName,
-        totalCooked: total,
-        easthamSent: eastham,
-        bethnalSent: bethnal,
-        coldRoomStock: coldRoom
-      };
-
-      setDispatch(prev => [...prev, newEntry]);
-
-      // AUTO-CREATE SALES ENTRIES FOR EACH LOCATION
-      if (eastham > 0) {
-        const easthamSalesEntry = {
-          id: sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 100 : 100,
-          dishName: newDispatchEntry.dishName,
-          location: 'Eastham',
-          receivedPortions: eastham,
-          remainingPortions: eastham,
-          date: new Date().toISOString().split('T')[0],
-          time: new Date().toLocaleTimeString(),
-          updatedBy: 'Auto-Created from Dispatch',
-          autoCreated: true
-        };
-        setSales(prev => [...prev, easthamSalesEntry]);
-      }
-
-      if (bethnal > 0) {
-        const bethnalSalesEntry = {
-          id: sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 200 : 200,
-          dishName: newDispatchEntry.dishName,
-          location: 'Bethnal Green',
-          receivedPortions: bethnal,
-          remainingPortions: bethnal,
-          date: new Date().toISOString().split('T')[0],
-          time: new Date().toLocaleTimeString(),
-          updatedBy: 'Auto-Created from Dispatch',
-          autoCreated: true
-        };
-        setSales(prev => [...prev, bethnalSalesEntry]);
-      }
-
-      // Mark matching prep items as processed
-      setPrepLog(prev => prev.map(p => {
-        if (p.dishName === newDispatchEntry.dishName && !p.processed) {
-          return { ...p, processed: true };
-        }
-        return p;
-      }));
-
-      setNewDispatchEntry({
-        dishName: '',
-        totalCooked: '',
-        easthamSent: '',
-        bethnalSent: '',
-        coldRoomStock: ''
-      });
-
-      alert(`✅ Successfully dispatched ${total} portions of ${newDispatchEntry.dishName}!\n\n📍 Eastham: ${eastham}p (Sales entry auto-created)\n📍 Bethnal Green: ${bethnal}p (Sales entry auto-created)\n🏪 Cold Room: ${coldRoom}p`);
-    } else {
-      alert('Please fill in Dish Name and Total Available portions');
-    }
+  const newEntry = {
+    id: dispatch.length > 0 ? Math.max(...dispatch.map(d => d.id)) + 1 : 1,
+    date: new Date().toISOString().split('T')[0],
+    dishName: newDispatchEntry.dishName,
+    totalCooked: total,
+    easthamSent: eastham,
+    bethnalSent: bethnal,
+    coldRoomStock: coldRoom
   };
+
+  // ⭐ ADD DATABASE SAVE
+  const dbEntry = {
+    dish_name: newEntry.dishName,
+    total_cooked: newEntry.totalCooked,
+    eastham_sent: newEntry.easthamSent,
+    bethnal_sent: newEntry.bethnalSent,
+    cold_room_stock: newEntry.coldRoomStock
+  };
+
+  await saveToDatabase('dispatch', dbEntry);
+  // ⭐ END DATABASE SAVE
+
+  setDispatch(prev => [...prev, newEntry]);
+
+  // AUTO-CREATE SALES ENTRIES FOR EACH LOCATION
+  if (eastham > 0) {
+    const easthamSalesEntry = {
+      id: sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 100 : 100,
+      dishName: newDispatchEntry.dishName,
+      location: 'Eastham',
+      receivedPortions: eastham,
+      remainingPortions: eastham,
+      date: new Date().toISOString().split('T')[0],
+      time: new Date().toLocaleTimeString(),
+      updatedBy: 'Auto-Created from Dispatch',
+      autoCreated: true
+    };
+
+    // ⭐ SAVE EASTHAM SALES TO DATABASE
+    await saveToDatabase('sales', {
+      dish_name: easthamSalesEntry.dishName,
+      location: easthamSalesEntry.location,
+      received_portions: easthamSalesEntry.receivedPortions,
+      remaining_portions: easthamSalesEntry.remainingPortions,
+      updated_by: easthamSalesEntry.updatedBy,
+      auto_created: true
+    });
+
+    setSales(prev => [...prev, easthamSalesEntry]);
+  }
+
+  if (bethnal > 0) {
+    const bethnalSalesEntry = {
+      id: sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 200 : 200,
+      dishName: newDispatchEntry.dishName,
+      location: 'Bethnal Green',
+      receivedPortions: bethnal,
+      remainingPortions: bethnal,
+      date: new Date().toISOString().split('T')[0],
+      time: new Date().toLocaleTimeString(),
+      updatedBy: 'Auto-Created from Dispatch',
+      autoCreated: true
+    };
+
+    // ⭐ SAVE BETHNAL SALES TO DATABASE
+    await saveToDatabase('sales', {
+      dish_name: bethnalSalesEntry.dishName,
+      location: bethnalSalesEntry.location,
+      received_portions: bethnalSalesEntry.receivedPortions,
+      remaining_portions: bethnalSalesEntry.remainingPortions,
+      updated_by: bethnalSalesEntry.updatedBy,
+      auto_created: true
+    });
+
+    setSales(prev => [...prev, bethnalSalesEntry]);
+  }
+
+  // Rest of your existing code...
+  setPrepLog(prev => prev.map(p => {
+    if (p.dishName === newDispatchEntry.dishName && !p.processed) {
+      return { ...p, processed: true };
+    }
+    return p;
+  }));
+
+  setNewDispatchEntry({
+    dishName: '',
+    totalCooked: '',
+    easthamSent: '',
+    bethnalSent: '',
+    coldRoomStock: ''
+  });
+
+  alert(`✅ Successfully dispatched ${total} portions of ${newDispatchEntry.dishName}!\n\n📍 Eastham: ${eastham}p (Sales entry auto-created)\n📍 Bethnal Green: ${bethnal}p (Sales entry auto-created)\n🏪 Cold Room: ${coldRoom}p`);
+} else {
+  alert('Please fill in Dish Name and Total Available portions');
+}
+};
 
   // Edit sales item function
   const handleEditSalesItem = (sale) => {
@@ -558,34 +592,49 @@ const handlePrepSubmit = async () => {  // ← ADD async
     });
   };
 
-  const handleUpdateSalesItem = () => {
-    if (newSalesEntry.location && newSalesEntry.dishName && newSalesEntry.receivedPortions !== '' && newSalesEntry.remainingPortions !== '') {
-      setSales(prev => prev.map(sale =>
-        sale.id === editingSalesItem
-          ? {
-              ...sale,
-              location: newSalesEntry.location,
-              dishName: newSalesEntry.dishName,
-              receivedPortions: parseInt(newSalesEntry.receivedPortions),
-              remainingPortions: parseInt(newSalesEntry.remainingPortions),
-              time: new Date().toLocaleTimeString(),
-              updatedBy: `${newSalesEntry.location} Team`
-            }
-          : sale
-      ));
+  const handleUpdateSalesItem = async () => {  // ← Add async
+  if (newSalesEntry.location && newSalesEntry.dishName && newSalesEntry.receivedPortions !== '' && newSalesEntry.remainingPortions !== '') {
 
-      setEditingSalesItem(null);
-      setNewSalesEntry({
-        location: '',
-        dishName: '',
-        receivedPortions: '',
-        remainingPortions: ''
+    // ⭐ UPDATE IN DATABASE
+    const updatedSale = sales.find(s => s.id === editingSalesItem);
+    if (updatedSale) {
+      await saveToDatabase('sales', {
+        id: updatedSale.id,  // Include ID for update
+        dish_name: newSalesEntry.dishName,
+        location: newSalesEntry.location,
+        received_portions: parseInt(newSalesEntry.receivedPortions),
+        remaining_portions: parseInt(newSalesEntry.remainingPortions),
+        updated_by: `${newSalesEntry.location} Team`
       });
-      alert('Sales item updated successfully');
-    } else {
-      alert('Please fill in all fields');
     }
-  };
+    // ⭐ END DATABASE UPDATE
+
+    setSales(prev => prev.map(sale =>
+      sale.id === editingSalesItem
+        ? {
+            ...sale,
+            location: newSalesEntry.location,
+            dishName: newSalesEntry.dishName,
+            receivedPortions: parseInt(newSalesEntry.receivedPortions),
+            remainingPortions: parseInt(newSalesEntry.remainingPortions),
+            time: new Date().toLocaleTimeString(),
+            updatedBy: `${newSalesEntry.location} Team`
+          }
+        : sale
+    ));
+
+    setEditingSalesItem(null);
+    setNewSalesEntry({
+      location: '',
+      dishName: '',
+      receivedPortions: '',
+      remainingPortions: ''
+    });
+    alert('Sales item updated successfully');
+  } else {
+    alert('Please fill in all fields');
+  }
+};
 
   // End of day closing function - FIXED
   const handleEndOfDay = (location) => {
@@ -633,33 +682,46 @@ const handlePrepSubmit = async () => {  // ← ADD async
   };
 
   // Add waste tracking function
-  const handleWasteSubmit = () => {
-    if (newWasteEntry.dishName && newWasteEntry.location && newWasteEntry.portions && newWasteEntry.reason) {
-      const newEntry = {
-        id: wasteLog.length > 0 ? Math.max(...wasteLog.map(w => w.id)) + 1 : 1,
-        date: new Date().toISOString().split('T')[0],
-        time: new Date().toLocaleTimeString(),
-        ...newWasteEntry,
-        portions: parseInt(newWasteEntry.portions),
-        value: calculateDishCost(newWasteEntry.dishName) * 0.16 * parseInt(newWasteEntry.portions)
-      };
+  const handleWasteSubmit = async () => {  // ← Add async
+  if (newWasteEntry.dishName && newWasteEntry.location && newWasteEntry.portions && newWasteEntry.reason) {
+    const newEntry = {
+      id: wasteLog.length > 0 ? Math.max(...wasteLog.map(w => w.id)) + 1 : 1,
+      date: new Date().toISOString().split('T')[0],
+      time: new Date().toLocaleTimeString(),
+      ...newWasteEntry,
+      portions: parseInt(newWasteEntry.portions),
+      value: calculateDishCost(newWasteEntry.dishName) * 0.16 * parseInt(newWasteEntry.portions)
+    };
 
-      setWasteLog(prev => [...prev, newEntry]);
-      localStorage.setItem('wasteLog', JSON.stringify([...wasteLog, newEntry]));
+    // ⭐ ADD DATABASE SAVE
+    const dbEntry = {
+      dish_name: newEntry.dishName,
+      location: newEntry.location,
+      portions: newEntry.portions,
+      reason: newEntry.reason,
+      notes: newEntry.notes || null,
+      value: newEntry.value
+    };
 
-      setNewWasteEntry({
-        dishName: '',
-        location: '',
-        portions: '',
-        reason: '',
-        notes: ''
-      });
+    await saveToDatabase('waste_log', dbEntry);
+    // ⭐ END DATABASE SAVE
 
-      alert(`Waste recorded: ${newEntry.portions} portions of ${newEntry.dishName}`);
-    } else {
-      alert('Please fill in all required fields');
-    }
-  };
+    setWasteLog(prev => [...prev, newEntry]);
+    localStorage.setItem('wasteLog', JSON.stringify([...wasteLog, newEntry]));
+
+    setNewWasteEntry({
+      dishName: '',
+      location: '',
+      portions: '',
+      reason: '',
+      notes: ''
+    });
+
+    alert(`Waste recorded: ${newEntry.portions} portions of ${newEntry.dishName}`);
+  } else {
+    alert('Please fill in all required fields');
+  }
+};
 
   // Dashboard Component
   const Dashboard = () => {
@@ -1700,16 +1762,18 @@ const handlePrepSubmit = async () => {  // ← ADD async
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Total Available (portions) *</label>
-                    <input
-                      type="number"
-                      value={newDispatchEntry.totalCooked}
-                      onChange={(e) => setNewDispatchEntry(prev => ({ ...prev, totalCooked: e.target.value }))}
-                      className="w-full p-2 border rounded bg-gray-50"
-                      placeholder="Auto-filled"
-                      readOnly
-                    />
-                  </div>
+  <label className="block text-sm font-medium mb-1 whitespace-nowrap">
+    Total Available (portions) *
+  </label>
+  <input
+    type="number"
+    value={newDispatchEntry.totalCooked}
+    onChange={(e) => setNewDispatchEntry(prev => ({ ...prev, totalCooked: e.target.value }))}
+    className="w-full p-2 border rounded bg-gray-50"
+    placeholder="Auto-filled"
+    readOnly
+  />
+</div>
                   <div>
                     <label className="block text-sm font-medium mb-1">Eastham Sent</label>
                     <input

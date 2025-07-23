@@ -1,17 +1,49 @@
+import { supabase } from './supabaseClient';
 import React, { useState, useEffect } from 'react';
-import { 
-  ChefHat, Package, Truck, BarChart3, Calendar, 
+import {
+  ChefHat, Package, Truck, BarChart3, Calendar,
   ShoppingCart, AlertTriangle, DollarSign, Users,
   Plus, Edit, Trash2, Save, X, CheckCircle, FileText,
   TrendingUp, TrendingDown, Clock, Printer
 } from 'lucide-react';
 
 const KitchenERP = () => {
+
   // Load data from localStorage on mount
   const loadFromStorage = (key, defaultValue) => {
     const stored = localStorage.getItem(key);
     return stored ? JSON.parse(stored) : defaultValue;
   };
+
+  // Load data from database
+  const loadFromDatabase = async (table, defaultValue) => {
+    try {
+      const { data, error } = await supabase
+        .from(table)
+        .select('*');
+
+      if (error) throw error;
+      return data || defaultValue;
+    } catch (error) {
+      console.error(`Error loading ${table}:`, error);
+      // Fall back to localStorage
+      return loadFromStorage(table, defaultValue);
+    }
+  };
+
+  // Save to database function
+  const saveToDatabase = async (table, data) => {
+    try {
+      const { error } = await supabase
+        .from(table)
+        .upsert(data);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error(`Error saving to ${table}:`, error);
+    }
+  };
+
 
   // Complete inventory with all items including new ingredients from recipes
   const [inventory, setInventory] = useState(() => loadFromStorage('inventory', [
@@ -26,14 +58,14 @@ const KitchenERP = () => {
     { id: 8, name: 'Ghee Butter Heera', unit: 'kg', openingStock: 10, receivedThisWeek: 8, reorderLevel: 2, unitCost: 10.50, supplier: 'Pacific Seafood', category: 'Dry Items' },
     { id: 9, name: 'Basmati Rice Green Daawat', unit: 'kg', openingStock: 60, receivedThisWeek: 80, reorderLevel: 20, unitCost: 1.75, supplier: 'Pacific Seafood', category: 'Dry Items' },
     { id: 10, name: 'Turmeric Powder Natco', unit: 'kg', openingStock: 3, receivedThisWeek: 1, reorderLevel: 0.5, unitCost: 5.99, supplier: 'Pacific Seafood', category: 'Spices' },
-    
+
     // Booker Items
     { id: 11, name: 'Natural Yogurt', unit: 'kg', openingStock: 15, receivedThisWeek: 20, reorderLevel: 5, unitCost: 1.10, supplier: 'Booker', category: 'Dairy' },
     { id: 12, name: 'Vegetable Oil Rapeseed', unit: 'litre', openingStock: 35, receivedThisWeek: 40, reorderLevel: 10, unitCost: 3.25, supplier: 'Booker', category: 'Dry Items' },
     { id: 13, name: 'Salt', unit: 'kg', openingStock: 10, receivedThisWeek: 12, reorderLevel: 3, unitCost: 1.25, supplier: 'Booker', category: 'Dry Items' },
     { id: 14, name: 'Cooking Onion', unit: 'kg', openingStock: 20, receivedThisWeek: 10, reorderLevel: 5, unitCost: 0.80, supplier: 'Booker', category: 'Vegetables' },
     { id: 15, name: 'Salad Tomatoes', unit: 'kg', openingStock: 10, receivedThisWeek: 6, reorderLevel: 3, unitCost: 1.33, supplier: 'Booker', category: 'Vegetables' },
-    
+
     // Meat Items
     { id: 16, name: 'Chicken Thigh', unit: 'kg', openingStock: 25, receivedThisWeek: 20, reorderLevel: 8, unitCost: 5.80, supplier: 'Local Butcher', category: 'Meat' },
     { id: 17, name: 'Boneless Chicken', unit: 'kg', openingStock: 30, receivedThisWeek: 25, reorderLevel: 10, unitCost: 7.50, supplier: 'Local Butcher', category: 'Meat' },
@@ -164,7 +196,7 @@ const KitchenERP = () => {
     { id: 2, date: '2025-01-22', dishName: 'Chicken Curry', quantityCooked: 5.6, preparedBy: 'Chef Sarah', portionSize: 160, containerSize: '500ml', totalPortions: 35, processed: true },
     { id: 3, date: '2025-01-22', dishName: 'Prawns Pulav', quantityCooked: 5.3, preparedBy: 'Chef Raj', portionSize: 160, containerSize: '500ml', totalPortions: 33, processed: true },
     { id: 4, date: '2025-01-22', dishName: 'Salan', quantityCooked: 4.8, preparedBy: 'Chef Priya', portionSize: 160, containerSize: '500ml', totalPortions: 30, processed: true },
-    
+
     // Fresh prep items ready for dispatch (for testing)
     { id: 5, date: '2025-01-22', dishName: 'Chicken Pakora', quantityCooked: 3.2, preparedBy: 'Chef Ahmed', portionSize: 80, containerSize: '8oz', totalPortions: 40, processed: false }
   ]));
@@ -183,7 +215,7 @@ const KitchenERP = () => {
     // Sample old stock items (closed yesterday)
     { id: 3, dishName: 'Chicken Curry', location: 'Eastham', receivedPortions: 15, remainingPortions: 0, finalStock: 4, endOfDay: true, closedDate: '2025-01-21', closedTime: '20:00:00', date: '2025-01-21', time: '20:00:00', updatedBy: 'Eastham Manager' },
     { id: 4, dishName: 'Salan', location: 'Bethnal Green', receivedPortions: 8, remainingPortions: 0, finalStock: 2, endOfDay: true, closedDate: '2025-01-21', closedTime: '19:30:00', date: '2025-01-21', time: '19:30:00', updatedBy: 'Bethnal Manager' },
-    
+
     // Today's ACTIVE sales entries (ready for testing close functionality)
     { id: 5, dishName: 'Donne Biryani Lamb', location: 'Eastham', receivedPortions: 25, remainingPortions: 8, date: '2025-01-22', time: '12:30:00', updatedBy: 'Eastham Team', autoCreated: true },
     { id: 6, dishName: 'Chicken Curry', location: 'Eastham', receivedPortions: 20, remainingPortions: 12, date: '2025-01-22', time: '13:15:00', updatedBy: 'Eastham Team', autoCreated: true },
@@ -267,7 +299,7 @@ const KitchenERP = () => {
       const closingBalance = item.openingStock + item.receivedThisWeek - usedThisWeek;
       const procurementRequired = closingBalance < item.reorderLevel ? Math.max(0, item.reorderLevel - closingBalance + item.reorderLevel * 0.5) : 0;
       const stockValue = closingBalance * item.unitCost;
-      
+
       return {
         ...item,
         usedThisWeek,
@@ -292,14 +324,14 @@ const KitchenERP = () => {
   const calculateDishCost = (dishName, quantity = 1) => {
     const dishRecipes = recipes.filter(r => r.dishName === dishName);
     let totalCost = 0;
-    
+
     dishRecipes.forEach(recipe => {
       const inventoryItem = inventory.find(i => i.name === recipe.ingredient);
       if (inventoryItem) {
         totalCost += recipe.quantityPer1kg * quantity * inventoryItem.unitCost;
       }
     });
-    
+
     return totalCost;
   };
 
@@ -311,7 +343,7 @@ const KitchenERP = () => {
         ...prepLog.map(p => p.dishName)
       ];
       const dishes = [...new Set(allDishes)];
-      
+
       if (dishes.length === 0) {
         const recipeDishes = [...new Set(recipes.map(r => r.dishName))].slice(0, 3);
         return recipeDishes.map(dish => ({
@@ -324,23 +356,23 @@ const KitchenERP = () => {
           priority: 'MEDIUM'
         }));
       }
-      
+
       return dishes.map(dish => {
         const soldToday = sales
           .filter(s => s.dishName === dish)
           .reduce((sum, s) => sum + Math.max(0, (s.receivedPortions || 0) - (s.remainingPortions || 0)), 0);
-        
+
         const coldStock = dispatch
           .filter(d => d.dishName === dish)
           .reduce((sum, d) => sum + (d.coldRoomStock || 0), 0);
-        
+
         const remaining = sales
           .filter(s => s.dishName === dish)
           .reduce((sum, s) => sum + (s.remainingPortions || 0), 0);
-        
+
         const expectedDemand = Math.max(soldToday || 15, 15);
         const cookQty = Math.max(0, (expectedDemand - coldStock - remaining) * 0.16);
-        
+
         return {
           dish,
           expectedDemand,
@@ -361,7 +393,7 @@ const KitchenERP = () => {
   const checkIngredientAvailability = (dishName, quantity) => {
     const dishRecipes = recipes.filter(r => r.dishName === dishName);
     const insufficientIngredients = [];
-    
+
     dishRecipes.forEach(recipe => {
       const inventoryItem = getInventoryMetrics().find(i => i.name === recipe.ingredient);
       if (inventoryItem) {
@@ -376,53 +408,66 @@ const KitchenERP = () => {
         }
       }
     });
-    
+
     return insufficientIngredients;
   };
 
-  const handlePrepSubmit = () => {
-    if (newPrepEntry.dishName && newPrepEntry.quantityCooked && newPrepEntry.portionSize && newPrepEntry.preparedBy) {
-      // Check ingredient availability
-      const shortages = checkIngredientAvailability(newPrepEntry.dishName, parseFloat(newPrepEntry.quantityCooked));
-      
-      if (shortages.length > 0) {
-        const shortageMessage = shortages.map(s => 
-          `${s.ingredient}: Need ${s.required.toFixed(2)} ${inventory.find(i => i.name === s.ingredient)?.unit}, have ${s.available.toFixed(2)}`
-        ).join('\n');
-        
-        if (!window.confirm(`⚠️ INSUFFICIENT INGREDIENTS!\n\n${shortageMessage}\n\nContinue anyway?`)) {
-          return;
-        }
-      }
-      
-      const totalPortions = Math.floor((parseFloat(newPrepEntry.quantityCooked) * 1000) / newPrepEntry.portionSize);
-      const newEntry = {
-        id: prepLog.length > 0 ? Math.max(...prepLog.map(p => p.id)) + 1 : 1,
-        date: new Date().toISOString().split('T')[0],
-        dishName: newPrepEntry.dishName,
-        quantityCooked: parseFloat(newPrepEntry.quantityCooked),
-        preparedBy: newPrepEntry.preparedBy,
-        portionSize: parseInt(newPrepEntry.portionSize),
-        containerSize: newPrepEntry.containerSize,
-        totalPortions,
-        processed: false
-      };
-      
-      setPrepLog(prev => [...prev, newEntry]);
-      
-      setNewPrepEntry({
-        dishName: '',
-        quantityCooked: '',
-        containerSize: '500ml',
-        portionSize: 160,
-        preparedBy: 'Chef Ahmed'
-      });
-      
-      alert(`Successfully added ${totalPortions} portions of ${newEntry.dishName} to prep log`);
-    } else {
-      alert('Please fill in all required fields');
+  // UPDATED VERSION (with database)
+const handlePrepSubmit = async () => {  // ← ADD async
+  if (newPrepEntry.dishName && newPrepEntry.quantityCooked && newPrepEntry.portionSize && newPrepEntry.preparedBy) {
+    // Check ingredient availability (existing code)
+    const shortages = checkIngredientAvailability(newPrepEntry.dishName, parseFloat(newPrepEntry.quantityCooked));
+
+    if (shortages.length > 0) {
+      // ... existing shortage check code ...
     }
-  };
+
+    const totalPortions = Math.floor((parseFloat(newPrepEntry.quantityCooked) * 1000) / newPrepEntry.portionSize);
+    const newEntry = {
+      id: prepLog.length > 0 ? Math.max(...prepLog.map(p => p.id)) + 1 : 1,
+      date: new Date().toISOString().split('T')[0],
+      dishName: newPrepEntry.dishName,
+      quantityCooked: parseFloat(newPrepEntry.quantityCooked),
+      preparedBy: newPrepEntry.preparedBy,
+      portionSize: parseInt(newPrepEntry.portionSize),
+      containerSize: newPrepEntry.containerSize,
+      totalPortions,
+      processed: false
+    };
+
+    // ⭐ ADD THESE NEW LINES FOR DATABASE!
+    // Convert to database format (snake_case)
+    const dbEntry = {
+      dish_name: newEntry.dishName,
+      quantity_cooked: newEntry.quantityCooked,
+      prepared_by: newEntry.preparedBy,
+      portion_size: newEntry.portionSize,
+      container_size: newEntry.containerSize,
+      total_portions: newEntry.totalPortions,
+      processed: false
+    };
+
+    // Save to database
+    await saveToDatabase('prep_log', dbEntry);
+    // ⭐ END OF NEW LINES
+
+    // Keep existing local state update
+    setPrepLog(prev => [...prev, newEntry]);
+
+    // Reset form (existing code)
+    setNewPrepEntry({
+      dishName: '',
+      quantityCooked: '',
+      containerSize: '500ml',
+      portionSize: 160,
+      preparedBy: 'Chef Ahmed'
+    });
+
+    alert(`Successfully added ${totalPortions} portions of ${newEntry.dishName} to prep log`);
+  } else {
+    alert('Please fill in all required fields');
+  }
+};
 
   const handleDispatchSubmit = () => {
     if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
@@ -430,13 +475,13 @@ const KitchenERP = () => {
       const bethnal = parseInt(newDispatchEntry.bethnalSent) || 0;
       const coldRoom = parseInt(newDispatchEntry.coldRoomStock) || 0;
       const total = parseInt(newDispatchEntry.totalCooked);
-      
+
       // Strict validation - must equal exactly
       if (eastham + bethnal + coldRoom !== total) {
         alert(`❌ Invalid Distribution!\n\nTotal Available: ${total} portions\nYour Distribution: ${eastham + bethnal + coldRoom} portions\n\nEastham (${eastham}) + Bethnal Green (${bethnal}) + Cold Room (${coldRoom}) must equal ${total}`);
         return;
       }
-      
+
       const newEntry = {
         id: dispatch.length > 0 ? Math.max(...dispatch.map(d => d.id)) + 1 : 1,
         date: new Date().toISOString().split('T')[0],
@@ -446,9 +491,9 @@ const KitchenERP = () => {
         bethnalSent: bethnal,
         coldRoomStock: coldRoom
       };
-      
+
       setDispatch(prev => [...prev, newEntry]);
-      
+
       // AUTO-CREATE SALES ENTRIES FOR EACH LOCATION
       if (eastham > 0) {
         const easthamSalesEntry = {
@@ -464,7 +509,7 @@ const KitchenERP = () => {
         };
         setSales(prev => [...prev, easthamSalesEntry]);
       }
-      
+
       if (bethnal > 0) {
         const bethnalSalesEntry = {
           id: sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 200 : 200,
@@ -479,7 +524,7 @@ const KitchenERP = () => {
         };
         setSales(prev => [...prev, bethnalSalesEntry]);
       }
-      
+
       // Mark matching prep items as processed
       setPrepLog(prev => prev.map(p => {
         if (p.dishName === newDispatchEntry.dishName && !p.processed) {
@@ -487,7 +532,7 @@ const KitchenERP = () => {
         }
         return p;
       }));
-      
+
       setNewDispatchEntry({
         dishName: '',
         totalCooked: '',
@@ -495,7 +540,7 @@ const KitchenERP = () => {
         bethnalSent: '',
         coldRoomStock: ''
       });
-      
+
       alert(`✅ Successfully dispatched ${total} portions of ${newDispatchEntry.dishName}!\n\n📍 Eastham: ${eastham}p (Sales entry auto-created)\n📍 Bethnal Green: ${bethnal}p (Sales entry auto-created)\n🏪 Cold Room: ${coldRoom}p`);
     } else {
       alert('Please fill in Dish Name and Total Available portions');
@@ -515,8 +560,8 @@ const KitchenERP = () => {
 
   const handleUpdateSalesItem = () => {
     if (newSalesEntry.location && newSalesEntry.dishName && newSalesEntry.receivedPortions !== '' && newSalesEntry.remainingPortions !== '') {
-      setSales(prev => prev.map(sale => 
-        sale.id === editingSalesItem 
+      setSales(prev => prev.map(sale =>
+        sale.id === editingSalesItem
           ? {
               ...sale,
               location: newSalesEntry.location,
@@ -528,7 +573,7 @@ const KitchenERP = () => {
             }
           : sale
       ));
-      
+
       setEditingSalesItem(null);
       setNewSalesEntry({
         location: '',
@@ -545,21 +590,21 @@ const KitchenERP = () => {
   // End of day closing function - FIXED
   const handleEndOfDay = (location) => {
     const locationSales = sales.filter(s => s.location === location && !s.endOfDay);
-    
+
     if (locationSales.length === 0) {
       alert(`No active sales entries found for ${location}`);
       return;
     }
-    
+
     const finalStock = locationSales.reduce((total, sale) => total + sale.remainingPortions, 0);
-    
+
     if (window.confirm(`🏪 CLOSE ${location.toUpperCase()} FOR THE DAY?\n\n📊 Final Summary:\n• Total remaining stock: ${finalStock} portions\n• These will become OLD STOCK tomorrow\n• Location will be marked as CLOSED\n\n⚠️ This action cannot be undone!\n\nContinue?`)) {
       // Mark all sales items for this location as end-of-day
-      setSales(prev => prev.map(sale => 
+      setSales(prev => prev.map(sale =>
         sale.location === location && !sale.endOfDay
-          ? { 
-              ...sale, 
-              endOfDay: true, 
+          ? {
+              ...sale,
+              endOfDay: true,
               finalStock: sale.remainingPortions,
               closedDate: new Date().toISOString().split('T')[0],
               closedTime: new Date().toLocaleTimeString(),
@@ -567,7 +612,7 @@ const KitchenERP = () => {
             }
           : sale
       ));
-      
+
       alert(`✅ ${location} CLOSED FOR THE DAY\n\n📊 Final Stock: ${finalStock} portions\n📅 These items are now OLD STOCK\n🎯 Tomorrow: Check "Old Stock Offers" for offers`);
     }
   };
@@ -577,13 +622,13 @@ const KitchenERP = () => {
       dishName: prepItem.dishName,
       totalCooked: prepItem.totalPortions.toString(),
       easthamSent: Math.ceil(prepItem.totalPortions * 0.4).toString(), // Auto-suggest 40% to Eastham
-      bethnalSent: Math.ceil(prepItem.totalPortions * 0.35).toString(), // Auto-suggest 35% to Bethnal Green  
+      bethnalSent: Math.ceil(prepItem.totalPortions * 0.35).toString(), // Auto-suggest 35% to Bethnal Green
       coldRoomStock: Math.floor(prepItem.totalPortions * 0.25).toString() // Auto-suggest 25% to Cold Room
     });
-    
+
     // Scroll to dispatch form
     document.querySelector('.dispatch-form')?.scrollIntoView({ behavior: 'smooth' });
-    
+
     alert(`✅ Auto-filled dispatch form for ${prepItem.dishName}!\n\n📊 Suggested Distribution:\n• Eastham: ${Math.ceil(prepItem.totalPortions * 0.4)}p\n• Bethnal Green: ${Math.ceil(prepItem.totalPortions * 0.35)}p\n• Cold Room: ${Math.floor(prepItem.totalPortions * 0.25)}p\n\n👆 You can adjust these numbers before dispatching!`);
   };
 
@@ -598,10 +643,10 @@ const KitchenERP = () => {
         portions: parseInt(newWasteEntry.portions),
         value: calculateDishCost(newWasteEntry.dishName) * 0.16 * parseInt(newWasteEntry.portions)
       };
-      
+
       setWasteLog(prev => [...prev, newEntry]);
       localStorage.setItem('wasteLog', JSON.stringify([...wasteLog, newEntry]));
-      
+
       setNewWasteEntry({
         dishName: '',
         location: '',
@@ -609,7 +654,7 @@ const KitchenERP = () => {
         reason: '',
         notes: ''
       });
-      
+
       alert(`Waste recorded: ${newEntry.portions} portions of ${newEntry.dishName}`);
     } else {
       alert('Please fill in all required fields');
@@ -623,13 +668,13 @@ const KitchenERP = () => {
     const totalStockValue = inventoryMetrics.reduce((sum, item) => sum + item.stockValue, 0);
     const totalSoldPortions = sales.reduce((sum, s) => sum + (s.receivedPortions - s.remainingPortions), 0);
     const wasteValue = wasteLog.reduce((sum, w) => sum + (w.value || 0), 0);
-    
+
     return (
       <div className="p-6">
         <h2 className="text-2xl font-bold mb-6 flex items-center">
           <BarChart3 className="mr-2" /> Kitchen Operations Dashboard
         </h2>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-blue-50 p-4 rounded-lg">
             <div className="flex items-center justify-between">
@@ -640,7 +685,7 @@ const KitchenERP = () => {
               <Package className="text-blue-500" size={32} />
             </div>
           </div>
-          
+
           <div className="bg-green-50 p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
@@ -650,7 +695,7 @@ const KitchenERP = () => {
               <CheckCircle className="text-green-500" size={32} />
             </div>
           </div>
-          
+
           <div className="bg-red-50 p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
@@ -660,7 +705,7 @@ const KitchenERP = () => {
               <AlertTriangle className="text-red-500" size={32} />
             </div>
           </div>
-          
+
           <div className="bg-orange-50 p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
@@ -685,7 +730,7 @@ const KitchenERP = () => {
               const received = locationSales.reduce((sum, s) => sum + s.receivedPortions, 0);
               const sold = locationSales.reduce((sum, s) => sum + (s.receivedPortions - s.remainingPortions), 0);
               const sellRate = received > 0 ? (sold / received * 100).toFixed(0) : 0;
-              
+
               return (
                 <div key={location} className="mb-3 p-3 bg-gray-50 rounded">
                   <div className="flex justify-between items-center">
@@ -741,7 +786,7 @@ const KitchenERP = () => {
               const cost = calculateDishCost(dish);
               const sellingPrice = 8; // Assuming £8 per portion
               const margin = ((sellingPrice - cost * 0.16) / sellingPrice * 100).toFixed(0);
-              
+
               return (
                 <div key={dish} className="mb-3 p-3 bg-gray-50 rounded">
                   <div className="flex justify-between items-center">
@@ -941,7 +986,7 @@ const KitchenERP = () => {
                       </div>
                     ))}
                   </div>
-                  
+
                   <div className="mt-4 p-3 bg-orange-100 rounded">
                     <div className="text-sm">
                       <div className="font-medium text-orange-800">Location Action Summary:</div>
@@ -961,8 +1006,8 @@ const KitchenERP = () => {
                 <div className="bg-white p-3 rounded border">
                   <h4 className="font-medium text-green-700 mb-2">🎯 SOCIAL MEDIA POST:</h4>
                   <div className="bg-gray-50 p-2 rounded text-xs italic">
-                    "🔥 FLASH SALE ALERT! Chef's Special Today Only - Premium {oldStockItems[0]?.dishName || 'Biryani'} £6 (Was £8) 
-                    Limited portions available! DM to reserve yours 📱 
+                    "🔥 FLASH SALE ALERT! Chef's Special Today Only - Premium {oldStockItems[0]?.dishName || 'Biryani'} £6 (Was £8)
+                    Limited portions available! DM to reserve yours 📱
                     #ChefSpecial #LimitedOffer #AuthenticFlavors"
                   </div>
                 </div>
@@ -1008,13 +1053,13 @@ const KitchenERP = () => {
           <div className="bg-yellow-50 p-4 rounded-lg">
             <p className="text-sm text-gray-600">Most Wasted</p>
             <p className="text-xl font-bold text-yellow-600">
-              {wasteLog.length > 0 ? 
+              {wasteLog.length > 0 ?
                 [...new Set(wasteLog.map(w => w.dishName))]
                   .map(dish => ({
                     dish,
                     count: wasteLog.filter(w => w.dishName === dish).reduce((sum, w) => sum + w.portions, 0)
                   }))
-                  .sort((a, b) => b.count - a.count)[0]?.dish || 'N/A' 
+                  .sort((a, b) => b.count - a.count)[0]?.dish || 'N/A'
                 : 'N/A'}
             </p>
           </div>
@@ -1032,7 +1077,7 @@ const KitchenERP = () => {
           <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Dish Name *</label>
-              <select 
+              <select
                 value={newWasteEntry.dishName}
                 onChange={(e) => setNewWasteEntry(prev => ({ ...prev, dishName: e.target.value }))}
                 className="w-full p-2 border rounded"
@@ -1045,7 +1090,7 @@ const KitchenERP = () => {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Location *</label>
-              <select 
+              <select
                 value={newWasteEntry.location}
                 onChange={(e) => setNewWasteEntry(prev => ({ ...prev, location: e.target.value }))}
                 className="w-full p-2 border rounded"
@@ -1058,17 +1103,17 @@ const KitchenERP = () => {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Portions *</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 value={newWasteEntry.portions}
                 onChange={(e) => setNewWasteEntry(prev => ({ ...prev, portions: e.target.value }))}
-                className="w-full p-2 border rounded" 
+                className="w-full p-2 border rounded"
                 placeholder="0"
               />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Reason *</label>
-              <select 
+              <select
                 value={newWasteEntry.reason}
                 onChange={(e) => setNewWasteEntry(prev => ({ ...prev, reason: e.target.value }))}
                 className="w-full p-2 border rounded"
@@ -1084,16 +1129,16 @@ const KitchenERP = () => {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Notes</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={newWasteEntry.notes}
                 onChange={(e) => setNewWasteEntry(prev => ({ ...prev, notes: e.target.value }))}
-                className="w-full p-2 border rounded" 
+                className="w-full p-2 border rounded"
                 placeholder="Optional"
               />
             </div>
             <div className="flex items-end">
-              <button 
+              <button
                 onClick={handleWasteSubmit}
                 className="w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
               >
@@ -1216,7 +1261,7 @@ const KitchenERP = () => {
           <div className="flex items-center space-x-4">
             <div>
               <label className="block text-sm font-medium mb-1">Report Type</label>
-              <select 
+              <select
                 value={reportType}
                 onChange={(e) => setReportType(e.target.value)}
                 className="p-2 border rounded"
@@ -1228,8 +1273,8 @@ const KitchenERP = () => {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Date</label>
-              <input 
-                type="date" 
+              <input
+                type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 className="p-2 border rounded"
@@ -1311,7 +1356,7 @@ const KitchenERP = () => {
                 <div className="flex justify-between">
                   <span>Waste Rate:</span>
                   <span className="font-medium text-orange-600">
-                    {report.portionsSold > 0 ? 
+                    {report.portionsSold > 0 ?
                       ((report.portionsWasted / (report.portionsSold + report.portionsWasted)) * 100).toFixed(1) : 0}%
                   </span>
                 </div>
@@ -1378,20 +1423,20 @@ const KitchenERP = () => {
 
         <main className="flex-1">
           {activeTab === 'dashboard' && <Dashboard />}
-          
+
           {activeTab === 'prep' && (
             <div className="p-6">
               <h2 className="text-2xl font-bold mb-6 flex items-center">
                 <ChefHat className="mr-2" /> Prep Log - Chef Entry System
               </h2>
-              
+
               {/* Prep Entry Form */}
               <div className="bg-white border rounded-lg p-6 mb-6">
                 <h3 className="text-lg font-semibold mb-4">🧑‍🍳 Add New Prep Entry</h3>
                 <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">Dish Name *</label>
-                    <select 
+                    <select
                       value={newPrepEntry.dishName}
                       onChange={(e) => {
                         const dishName = e.target.value;
@@ -1412,18 +1457,18 @@ const KitchenERP = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">Quantity (kg) *</label>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       step="0.1"
                       value={newPrepEntry.quantityCooked}
                       onChange={(e) => setNewPrepEntry(prev => ({ ...prev, quantityCooked: e.target.value }))}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500" 
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
                       placeholder="5.0"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">Container Size</label>
-                    <select 
+                    <select
                       value={newPrepEntry.containerSize}
                       onChange={(e) => {
                         const container = containerSizes.find(c => c.size === e.target.value);
@@ -1444,17 +1489,17 @@ const KitchenERP = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">Portion Size (g)</label>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       value={newPrepEntry.portionSize}
                       onChange={(e) => setNewPrepEntry(prev => ({ ...prev, portionSize: parseInt(e.target.value) }))}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500" 
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
                       placeholder="160"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">Chef Name</label>
-                    <select 
+                    <select
                       value={newPrepEntry.preparedBy}
                       onChange={(e) => setNewPrepEntry(prev => ({ ...prev, preparedBy: e.target.value }))}
                       className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
@@ -1466,7 +1511,7 @@ const KitchenERP = () => {
                     </select>
                   </div>
                   <div className="flex items-end">
-                    <button 
+                    <button
                       onClick={handlePrepSubmit}
                       className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:ring-2 focus:ring-green-500"
                     >
@@ -1475,7 +1520,7 @@ const KitchenERP = () => {
                     </button>
                   </div>
                 </div>
-                
+
                 {/* Live Calculation Display */}
                 {newPrepEntry.quantityCooked && newPrepEntry.portionSize && (
                   <div className="mt-4 p-3 bg-green-50 rounded border border-green-200">
@@ -1543,13 +1588,13 @@ const KitchenERP = () => {
               </div>
             </div>
           )}
-          
+
           {activeTab === 'dispatch' && (
             <div className="p-6">
               <h2 className="text-2xl font-bold mb-6 flex items-center">
                 <Truck className="mr-2" /> Dispatch & Cold Room Management
               </h2>
-              
+
               {/* Quick Tutorial */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                 <h3 className="text-lg font-semibold text-blue-800 mb-3">🎯 How Dispatch Works (3 Easy Steps)</h3>
@@ -1580,17 +1625,17 @@ const KitchenERP = () => {
                   </div>
                 </div>
               </div>
-              
+
               {/* Quick Select from Prep Log */}
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
                 <h3 className="text-lg font-semibold text-green-800">📋 Ready for Dispatch (From Today's Prep)</h3>
                 <p className="text-sm text-green-700 mb-3">👆 Click any item below to auto-fill the dispatch form with smart distribution suggestions</p>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {prepLog.filter(prep => !prep.processed).length > 0 ? 
+                  {prepLog.filter(prep => !prep.processed).length > 0 ?
                     prepLog.filter(prep => !prep.processed).map(prep => (
-                      <div 
-                        key={`prep-${prep.id}`} 
+                      <div
+                        key={`prep-${prep.id}`}
                         className="bg-white rounded-lg p-4 border-2 border-green-200 cursor-pointer hover:border-green-400 hover:shadow-md transform hover:scale-105 transition-all duration-200"
                         onClick={() => selectPrepItem(prep)}
                       >
@@ -1623,14 +1668,14 @@ const KitchenERP = () => {
                     </div>
                   }
                 </div>
-                
+
                 {/* Summary */}
                 {prepLog.filter(prep => !prep.processed).length > 0 && (
                   <div className="mt-4 p-3 bg-white rounded border border-green-200">
                     <div className="text-sm text-green-800">
-                      <strong>📊 Ready to Dispatch Summary:</strong> 
+                      <strong>📊 Ready to Dispatch Summary:</strong>
                       <span className="ml-2">
-                        {prepLog.filter(prep => !prep.processed).length} items | 
+                        {prepLog.filter(prep => !prep.processed).length} items |
                         {prepLog.filter(prep => !prep.processed).reduce((sum, prep) => sum + prep.totalPortions, 0)} total portions |
                         £{prepLog.filter(prep => !prep.processed).reduce((sum, prep) => sum + (calculateDishCost(prep.dishName) * prep.quantityCooked), 0).toFixed(2)} total value
                       </span>
@@ -1656,61 +1701,61 @@ const KitchenERP = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">Total Available (portions) *</label>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       value={newDispatchEntry.totalCooked}
                       onChange={(e) => setNewDispatchEntry(prev => ({ ...prev, totalCooked: e.target.value }))}
-                      className="w-full p-2 border rounded bg-gray-50" 
+                      className="w-full p-2 border rounded bg-gray-50"
                       placeholder="Auto-filled"
                       readOnly
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">Eastham Sent</label>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       value={newDispatchEntry.easthamSent}
                       onChange={(e) => {
                         const eastham = parseInt(e.target.value) || 0;
                         const bethnal = parseInt(newDispatchEntry.bethnalSent) || 0;
                         const total = parseInt(newDispatchEntry.totalCooked) || 0;
                         const coldRoom = Math.max(0, total - eastham - bethnal);
-                        setNewDispatchEntry(prev => ({ 
-                          ...prev, 
+                        setNewDispatchEntry(prev => ({
+                          ...prev,
                           easthamSent: e.target.value,
                           coldRoomStock: coldRoom.toString()
                         }));
                       }}
-                      className="w-full p-2 border-2 border-blue-300 rounded focus:border-blue-500" 
+                      className="w-full p-2 border-2 border-blue-300 rounded focus:border-blue-500"
                       placeholder="Adjust as needed"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">Bethnal Green Sent</label>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       value={newDispatchEntry.bethnalSent}
                       onChange={(e) => {
                         const bethnal = parseInt(e.target.value) || 0;
                         const eastham = parseInt(newDispatchEntry.easthamSent) || 0;
                         const total = parseInt(newDispatchEntry.totalCooked) || 0;
                         const coldRoom = Math.max(0, total - eastham - bethnal);
-                        setNewDispatchEntry(prev => ({ 
-                          ...prev, 
+                        setNewDispatchEntry(prev => ({
+                          ...prev,
                           bethnalSent: e.target.value,
                           coldRoomStock: coldRoom.toString()
                         }));
                       }}
-                      className="w-full p-2 border-2 border-green-300 rounded focus:border-green-500" 
+                      className="w-full p-2 border-2 border-green-300 rounded focus:border-green-500"
                       placeholder="Adjust as needed"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">Cold Room Stock (auto)</label>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       value={newDispatchEntry.coldRoomStock}
-                      className="w-full p-2 border rounded bg-purple-50" 
+                      className="w-full p-2 border rounded bg-purple-50"
                       placeholder="Auto calculated"
                       readOnly
                     />
@@ -1719,7 +1764,7 @@ const KitchenERP = () => {
                     </div>
                   </div>
                   <div className="flex items-end space-x-2">
-                    <button 
+                    <button
                       onClick={handleDispatchSubmit}
                       disabled={!newDispatchEntry.dishName || !newDispatchEntry.totalCooked}
                       className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
@@ -1727,7 +1772,7 @@ const KitchenERP = () => {
                       <Plus size={16} className="inline mr-1" />
                       Dispatch & Create Sales
                     </button>
-                    <button 
+                    <button
                       onClick={() => setNewDispatchEntry({
                         dishName: '',
                         totalCooked: '',
@@ -1742,7 +1787,7 @@ const KitchenERP = () => {
                     </button>
                   </div>
                 </div>
-                
+
                 {/* Live Total Check */}
                 {newDispatchEntry.totalCooked && (newDispatchEntry.easthamSent || newDispatchEntry.bethnalSent || newDispatchEntry.coldRoomStock) && (
                   <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
@@ -1750,7 +1795,7 @@ const KitchenERP = () => {
                       <div className="flex justify-between items-center">
                         <span>Distribution Check:</span>
                         <span className={`font-bold ${
-                          (parseInt(newDispatchEntry.easthamSent) || 0) + (parseInt(newDispatchEntry.bethnalSent) || 0) + (parseInt(newDispatchEntry.coldRoomStock) || 0) === parseInt(newDispatchEntry.totalCooked) 
+                          (parseInt(newDispatchEntry.easthamSent) || 0) + (parseInt(newDispatchEntry.bethnalSent) || 0) + (parseInt(newDispatchEntry.coldRoomStock) || 0) === parseInt(newDispatchEntry.totalCooked)
                           ? 'text-green-600' : 'text-red-600'
                         }`}>
                           {(parseInt(newDispatchEntry.easthamSent) || 0) + (parseInt(newDispatchEntry.bethnalSent) || 0) + (parseInt(newDispatchEntry.coldRoomStock) || 0)} / {newDispatchEntry.totalCooked} portions
@@ -1808,13 +1853,13 @@ const KitchenERP = () => {
               </div>
             </div>
           )}
-          
+
           {activeTab === 'sales' && (
             <div className="p-6">
               <h2 className="text-2xl font-bold mb-6 flex items-center">
                 <DollarSign className="mr-2" /> Sales Tracker - Live Updates Only
               </h2>
-              
+
               {/* Simplified Workflow */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                 <h3 className="text-lg font-semibold text-blue-800 mb-3">📋 SIMPLIFIED WORKFLOW</h3>
@@ -1853,7 +1898,7 @@ const KitchenERP = () => {
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                       <label className="block text-sm font-medium mb-1">Location (Fixed)</label>
-                      <input 
+                      <input
                         type="text"
                         value={newSalesEntry.location}
                         className="w-full p-2 border rounded bg-gray-100"
@@ -1862,7 +1907,7 @@ const KitchenERP = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1">Dish Name (Fixed)</label>
-                      <input 
+                      <input
                         type="text"
                         value={newSalesEntry.dishName}
                         className="w-full p-2 border rounded bg-gray-100"
@@ -1871,8 +1916,8 @@ const KitchenERP = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1">Received (Fixed)</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         value={newSalesEntry.receivedPortions}
                         className="w-full p-2 border rounded bg-gray-100"
                         disabled
@@ -1880,29 +1925,29 @@ const KitchenERP = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1">Remaining Portions *</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         value={newSalesEntry.remainingPortions}
                         onChange={(e) => setNewSalesEntry(prev => ({ ...prev, remainingPortions: e.target.value }))}
-                        className="w-full p-2 border-2 border-orange-300 rounded focus:border-orange-500" 
+                        className="w-full p-2 border-2 border-orange-300 rounded focus:border-orange-500"
                         placeholder="Update remaining stock"
                         autoFocus
                       />
                       <div className="text-xs text-green-600 mt-1">
-                        Will sell: {newSalesEntry.receivedPortions && newSalesEntry.remainingPortions ? 
+                        Will sell: {newSalesEntry.receivedPortions && newSalesEntry.remainingPortions ?
                           Math.max(0, parseInt(newSalesEntry.receivedPortions) - parseInt(newSalesEntry.remainingPortions)) : 0} portions
                       </div>
                     </div>
                   </div>
                   <div className="flex space-x-2 mt-4">
-                    <button 
+                    <button
                       onClick={handleUpdateSalesItem}
                       className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700"
                     >
                       <Save size={16} className="inline mr-1" />
                       Update Stock
                     </button>
-                    <button 
+                    <button
                       onClick={() => {
                         setEditingSalesItem(null);
                         setNewSalesEntry({
@@ -1931,7 +1976,7 @@ const KitchenERP = () => {
                       <div>Current Stock: <span className="font-bold text-orange-600">{sales.filter(s => s.location === 'Eastham' && !s.endOfDay).reduce((sum, s) => sum + s.remainingPortions, 0)} portions</span></div>
                       <div>Sold Today: <span className="font-bold text-green-600">{sales.filter(s => s.location === 'Eastham' && !s.endOfDay).reduce((sum, s) => sum + (s.receivedPortions - s.remainingPortions), 0)} portions</span></div>
                     </div>
-                    <button 
+                    <button
                       onClick={() => handleEndOfDay('Eastham')}
                       className="w-full px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
                       disabled={sales.filter(s => s.location === 'Eastham' && !s.endOfDay).length === 0}
@@ -1945,7 +1990,7 @@ const KitchenERP = () => {
                       <div>Current Stock: <span className="font-bold text-orange-600">{sales.filter(s => s.location === 'Bethnal Green' && !s.endOfDay).reduce((sum, s) => sum + s.remainingPortions, 0)} portions</span></div>
                       <div>Sold Today: <span className="font-bold text-green-600">{sales.filter(s => s.location === 'Bethnal Green' && !s.endOfDay).reduce((sum, s) => sum + (s.receivedPortions - s.remainingPortions), 0)} portions</span></div>
                     </div>
-                    <button 
+                    <button
                       onClick={() => handleEndOfDay('Bethnal Green')}
                       className="w-full px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
                       disabled={sales.filter(s => s.location === 'Bethnal Green' && !s.endOfDay).length === 0}
@@ -1981,7 +2026,7 @@ const KitchenERP = () => {
                       <tbody className="divide-y">
                         {sales.filter(s => !s.endOfDay).map(sale => (
                           <tr key={sale.id} className={
-                            sale.remainingPortions === 0 ? 'bg-green-50' : 
+                            sale.remainingPortions === 0 ? 'bg-green-50' :
                             sale.remainingPortions > sale.receivedPortions * 0.5 ? 'bg-red-50' : 'bg-yellow-50'
                           }>
                             <td className="px-4 py-2 font-medium">
@@ -1998,7 +2043,7 @@ const KitchenERP = () => {
                             <td className="px-4 py-2">{sale.receivedPortions}p</td>
                             <td className="px-4 py-2">
                               <span className={`font-medium ${
-                                sale.remainingPortions === 0 ? 'text-green-600' : 
+                                sale.remainingPortions === 0 ? 'text-green-600' :
                                 sale.remainingPortions > sale.receivedPortions * 0.5 ? 'text-red-600' : 'text-orange-600'
                               }`}>
                                 {sale.remainingPortions}p
@@ -2009,8 +2054,8 @@ const KitchenERP = () => {
                             </td>
                             <td className="px-4 py-2">
                               <span className={`px-2 py-1 rounded text-xs ${
-                                ((sale.receivedPortions - sale.remainingPortions) / sale.receivedPortions * 100) >= 90 
-                                  ? 'bg-green-100 text-green-800' 
+                                ((sale.receivedPortions - sale.remainingPortions) / sale.receivedPortions * 100) >= 90
+                                  ? 'bg-green-100 text-green-800'
                                   : ((sale.receivedPortions - sale.remainingPortions) / sale.receivedPortions * 100) >= 70
                                   ? 'bg-yellow-100 text-yellow-800'
                                   : 'bg-red-100 text-red-800'
@@ -2032,7 +2077,7 @@ const KitchenERP = () => {
                               <div className="text-gray-500 text-xs">{sale.updatedBy}</div>
                             </td>
                             <td className="px-4 py-2">
-                              <button 
+                              <button
                                 onClick={() => handleEditSalesItem(sale)}
                                 className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
                                 title="Update remaining stock"
@@ -2055,13 +2100,13 @@ const KitchenERP = () => {
               </div>
             </div>
           )}
-          
+
           {activeTab === 'old-stock' && <OldStockManager />}
-          
+
           {activeTab === 'waste' && <WasteTracking />}
-          
+
           {activeTab === 'reports' && <Reports />}
-          
+
           {activeTab === 'recipe-bank' && (
             <div className="p-6">
               <h2 className="text-2xl font-bold mb-6 flex items-center">
@@ -2076,7 +2121,7 @@ const KitchenERP = () => {
                     const inventoryItem = inventory.find(i => i.name === recipe.ingredient);
                     return sum + (inventoryItem ? recipe.quantityPer1kg * inventoryItem.unitCost : 0);
                   }, 0);
-                  
+
                   return (
                     <div key={dish} className="bg-white border rounded-lg p-4">
                       <div className="flex justify-between items-start mb-2">
@@ -2102,7 +2147,7 @@ const KitchenERP = () => {
                     const inventoryItem = inventory.find(i => i.name === recipe.ingredient);
                     return sum + (inventoryItem ? recipe.quantityPer1kg * inventoryItem.unitCost : 0);
                   }, 0);
-                  
+
                   return (
                     <div key={dishName} className="bg-white border rounded-lg p-4">
                       <div className="flex justify-between items-center mb-3">
@@ -2116,12 +2161,12 @@ const KitchenERP = () => {
                         {dishRecipes.map(recipe => {
                           const inventoryItem = inventory.find(i => i.name === recipe.ingredient);
                           const itemCost = inventoryItem ? recipe.quantityPer1kg * inventoryItem.unitCost : 0;
-                          
+
                           return (
                             <div key={recipe.id} className="flex justify-between items-center text-sm border-l-2 border-blue-200 pl-2">
                               <span>{recipe.ingredient}</span>
                               <span className="text-gray-600">
-                                {recipe.quantityPer1kg} {recipe.unit} 
+                                {recipe.quantityPer1kg} {recipe.unit}
                                 {inventoryItem && ` (£${itemCost.toFixed(3)})`}
                               </span>
                             </div>
@@ -2154,7 +2199,7 @@ const KitchenERP = () => {
                       {recipes.map(recipe => {
                         const inventoryItem = inventory.find(i => i.name === recipe.ingredient);
                         const itemCost = inventoryItem ? recipe.quantityPer1kg * inventoryItem.unitCost : 0;
-                        
+
                         return (
                           <tr key={recipe.id} className="hover:bg-gray-50">
                             <td className="px-4 py-2 font-medium text-blue-600">{recipe.dishName}</td>
@@ -2210,13 +2255,13 @@ const KitchenERP = () => {
               </div>
             </div>
           )}
-          
+
           {activeTab === 'inventory' && (
             <div className="p-6">
               <h2 className="text-2xl font-bold mb-6 flex items-center">
                 <Package className="mr-2" /> Inventory Tracker
               </h2>
-              
+
               <div className="overflow-x-auto">
                 <table className="min-w-full bg-white border rounded-lg">
                   <thead className="bg-gray-50">
@@ -2275,7 +2320,7 @@ const KitchenERP = () => {
               <h2 className="text-2xl font-bold mb-6 flex items-center">
                 <Calendar className="mr-2" /> Smart Planning & Old Stock Analysis
               </h2>
-              
+
               {/* Old Stock Alert */}
               {sales.filter(s => s.endOfDay && s.finalStock > 0).length > 0 && (
                 <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-6">
@@ -2300,17 +2345,17 @@ const KitchenERP = () => {
                   </div>
                 </div>
               )}
-              
+
               <div className="bg-white border rounded-lg p-6">
                 <h3 className="text-lg font-semibold mb-4">Tomorrow's Intelligent Cooking Plan</h3>
-                
+
                 <div className="space-y-4">
                   {generateForecast().map((forecast, index) => {
                     // Check if this dish has old stock
                     const hasOldStock = sales.some(s => s.dishName === forecast.dish && s.endOfDay && s.finalStock > 0);
                     const oldStockCount = sales.filter(s => s.dishName === forecast.dish && s.endOfDay && s.finalStock > 0)
                                                  .reduce((sum, s) => sum + s.finalStock, 0);
-                    
+
                     return (
                       <div key={index} className={`border-2 rounded-lg p-4 ${
                         hasOldStock ? 'bg-red-50 border-red-500' : 'bg-blue-50 border-blue-500'
@@ -2357,17 +2402,17 @@ const KitchenERP = () => {
                         </div>
 
                         <div className={`p-4 rounded-lg text-center font-medium ${
-                          hasOldStock 
-                            ? 'bg-red-100 text-red-800' 
-                            : forecast.totalRemaining > forecast.expectedDemand * 0.5 
+                          hasOldStock
+                            ? 'bg-red-100 text-red-800'
+                            : forecast.totalRemaining > forecast.expectedDemand * 0.5
                               ? 'bg-green-100 text-green-800'
                               : 'bg-blue-100 text-blue-800'
                         }`}>
                           📋 <strong>Action Plan:</strong> {
-                            hasOldStock 
+                            hasOldStock
                               ? `🚨 PRIORITY: Sell ${oldStockCount}p old stock first! Reduce new cooking or skip entirely.`
-                              : forecast.totalRemaining > forecast.expectedDemand * 0.5 
-                                ? 'REDUCE COOKING - Use existing stock first' 
+                              : forecast.totalRemaining > forecast.expectedDemand * 0.5
+                                ? 'REDUCE COOKING - Use existing stock first'
                                 : 'NORMAL COOKING - Fresh prep needed'
                           }
                         </div>
@@ -2378,7 +2423,7 @@ const KitchenERP = () => {
               </div>
             </div>
           )}
-          
+
           {activeTab === 'procurement' && (
             <div className="p-6">
               <h2 className="text-2xl font-bold mb-6 flex items-center">
@@ -2397,8 +2442,8 @@ const KitchenERP = () => {
                         <div>
                           <p className="font-medium text-lg">{item.name}</p>
                           <p className="text-sm text-gray-600">
-                            <span className="font-medium">Current:</span> {item.closingBalance.toFixed(1)} {item.unit} | 
-                            <span className="font-medium"> Reorder Level:</span> {item.reorderLevel} {item.unit} | 
+                            <span className="font-medium">Current:</span> {item.closingBalance.toFixed(1)} {item.unit} |
+                            <span className="font-medium"> Reorder Level:</span> {item.reorderLevel} {item.unit} |
                             <span className="font-medium"> Supplier:</span> {item.supplier}
                           </p>
                         </div>

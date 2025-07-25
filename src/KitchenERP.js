@@ -255,6 +255,64 @@ const KitchenERP = () => {
     preparedBy: 'Chef Ahmed'
   });
 
+  // Add after your other useState declarations
+  const [userRole, setUserRole] = useState(() =>
+    localStorage.getItem('userRole') || null
+  );
+  const [showRoleSelector, setShowRoleSelector] = useState(() =>
+    !localStorage.getItem('userRole')
+  );
+
+
+  // Role-based permissions
+  const rolePermissions = {
+    owner: {
+      canSeeCosts: true,
+      canSeeReports: true,
+      canManageInventory: true,
+      canAddStaff: true,
+      tabs: ['dashboard', 'smart-planning', 'prep', 'dispatch', 'sales', 'old-stock', 'waste', 'recipe-bank', 'inventory', 'procurement', 'reports']
+    },
+    manager: {
+      canSeeCosts: true,
+      canSeeReports: false,
+      canManageInventory: true,
+      canAddStaff: true,
+      tabs: ['dashboard', 'smart-planning', 'prep', 'dispatch', 'sales', 'old-stock', 'waste', 'recipe-bank', 'inventory', 'procurement']
+    },
+    chef: {
+      canSeeCosts: false,
+      canSeeReports: false,
+      canManageInventory: false,
+      canAddStaff: false,
+      tabs: ['prep', 'dispatch', 'smart-planning']
+    },
+    staff: {
+      canSeeCosts: false,
+      canSeeReports: false,
+      canManageInventory: false,
+      canAddStaff: false,
+      tabs: ['sales', 'old-stock']
+    }
+  };
+
+  // Get current permissions
+  const currentPermissions = rolePermissions[userRole] || rolePermissions.staff;
+
+  // Add after your role state variables
+  const [shopStatuses, setShopStatuses] = useState(() => {
+    const saved = localStorage.getItem('shopStatuses');
+    return saved ? JSON.parse(saved) : {"Eastham": "closed", "Bethnal Green": "closed"};
+  });
+
+  const [shopOpenTimes, setShopOpenTimes] = useState(() => {
+    const saved = localStorage.getItem('shopOpenTimes');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const [selectedLocation, setSelectedLocation] = useState('all');
+
+
   const [newDispatchEntry, setNewDispatchEntry] = useState({
     dishName: '',
     totalCooked: '',
@@ -291,6 +349,36 @@ const KitchenERP = () => {
   ]);
 
   const [activeTab, setActiveTab] = useState('dashboard');
+
+
+
+      // Helper function for location-based priorities
+  const getLocationBasedPriorities = (location) => {
+    const dishes = ['Chicken Biryani', 'Vegetable Curry', 'Tandoori Chicken', 'Lamb Karahi', 'Dal Tadka'];
+    const priorities = [];
+
+    dishes.forEach(dish => {
+      const stock = prepLog.filter(p =>
+        p.dishName === dish &&
+        p.status === 'prepared' &&
+        (location === 'all' || p.location === location)
+      );
+
+      const totalStock = stock.reduce((sum, item) => sum + item.totalPortions, 0);
+      const avgDailySales = 25; // This should come from your sales data
+
+      if (totalStock < avgDailySales * 0.5) {
+        priorities.push({
+          dish,
+          location: location === 'all' ? 'Both Locations' : location,
+          currentStock: totalStock,
+          needed: Math.ceil(avgDailySales * 1.5)
+        });
+      }
+    });
+
+    return priorities.sort((a, b) => a.currentStock - b.currentStock);
+  };
 
   // Helper functions
   const getInventoryMetrics = () => {
@@ -434,6 +522,8 @@ const handlePrepSubmit = async () => {  // ← ADD async
       totalPortions,
       processed: false
     };
+
+
 
     // ⭐ ADD THESE NEW LINES FOR DATABASE!
     // Convert to database format (snake_case)
@@ -733,6 +823,9 @@ if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
 
     return (
       <div className="p-6">
+
+
+
         <h2 className="text-2xl font-bold mb-6 flex items-center">
           <BarChart3 className="mr-2" /> Kitchen Operations Dashboard
         </h2>
@@ -1264,8 +1357,10 @@ if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
   };
 
   // Navigation tabs
-  const tabs = [
+  // Update tab order - Smart Planning as #2
+  const allTabs = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+    { id: 'smart-planning', label: 'Smart Planning', icon: Calendar }, // Moved to #2
     { id: 'prep', label: 'Prep Log', icon: ChefHat },
     { id: 'dispatch', label: 'Dispatch', icon: Truck },
     { id: 'sales', label: 'Sales Tracker', icon: DollarSign },
@@ -1273,10 +1368,12 @@ if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
     { id: 'waste', label: 'Waste Tracking', icon: Trash2 },
     { id: 'recipe-bank', label: 'Recipe Bank', icon: ChefHat },
     { id: 'inventory', label: 'Inventory', icon: Package },
-    { id: 'smart-planning', label: 'Smart Planning', icon: Calendar },
     { id: 'procurement', label: 'Procurement', icon: ShoppingCart },
     { id: 'reports', label: 'Reports', icon: FileText }
   ];
+
+  // Filter tabs based on current role
+  const tabs = allTabs.filter(tab => currentPermissions.tabs.includes(tab.id));
 
   // Add Reports Component
   const Reports = () => {
@@ -1448,19 +1545,122 @@ if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <nav className="bg-white shadow-sm border-b">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <ChefHat className="text-blue-600" size={32} />
-              <h1 className="text-xl font-bold text-gray-900">Kitchen ERP System - Enhanced Version 2.0</h1>
-            </div>
-            <div className="text-sm text-gray-600">
-              Central Prep Kitchen | Eastham & Bethnal Green Locations
-            </div>
-          </div>
+    <nav className="bg-white shadow-sm border-b">
+  <div className="px-6 py-4">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center space-x-4">
+        <ChefHat className="text-blue-600" size={32} />
+        <h1 className="text-xl font-bold text-gray-900">Kitchen ERP System - Enhanced Version 2.0</h1>
+        <div className="flex space-x-2">
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            shopStatuses['Eastham'] === 'open' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          }`}>
+            Eastham: {shopStatuses['Eastham'] === 'open' ? '🟢' : '🔴'}
+          </span>
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            shopStatuses['Bethnal Green'] === 'open' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          }`}>
+            BG: {shopStatuses['Bethnal Green'] === 'open' ? '🟢' : '🔴'}
+          </span>
         </div>
-      </nav>
+
+      </div>
+      <div className="flex items-center space-x-4">
+        <div className="text-sm text-gray-600">
+          Central Prep Kitchen | Eastham & Bethnal Green Locations
+        </div>
+        {userRole && (
+          <div className="flex items-center space-x-2">
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+              userRole === 'owner' ? 'bg-purple-100 text-purple-800' :
+              userRole === 'manager' ? 'bg-blue-100 text-blue-800' :
+              userRole === 'chef' ? 'bg-green-100 text-green-800' :
+              'bg-orange-100 text-orange-800'
+            }`}>
+              {userRole === 'owner' ? '👑 Owner' :
+               userRole === 'manager' ? '💼 Manager' :
+               userRole === 'chef' ? '👨‍🍳 Chef' :
+               '👥 Staff'}
+            </span>
+            <button
+              onClick={() => {
+                localStorage.removeItem('userRole');
+                setUserRole(null);
+                setShowRoleSelector(true);
+                setActiveTab(tabs[0]?.id || 'dashboard');
+              }}
+              className="text-xs text-blue-600 hover:text-blue-800"
+            >
+              Switch Role
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+</nav>
+
+
+{/* Role Selector Modal */}
+{showRoleSelector && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div className="bg-white rounded-lg p-8 max-w-md w-full">
+      <h2 className="text-2xl font-bold mb-6 text-center">Welcome! Select Your Role</h2>
+      <div className="space-y-3">
+        <button
+          onClick={() => {
+            setUserRole('owner');
+            localStorage.setItem('userRole', 'owner');
+            setShowRoleSelector(false);
+          }}
+          className="w-full p-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+        >
+          <div className="font-bold text-lg">👑 Owner</div>
+          <div className="text-sm mt-1">Full access to all features</div>
+        </button>
+
+        <button
+          onClick={() => {
+            setUserRole('manager');
+            localStorage.setItem('userRole', 'manager');
+            setShowRoleSelector(false);
+          }}
+          className="w-full p-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+        >
+          <div className="font-bold text-lg">💼 Manager</div>
+          <div className="text-sm mt-1">Manage operations, no financial reports</div>
+        </button>
+
+        <button
+          onClick={() => {
+            setUserRole('chef');
+            localStorage.setItem('userRole', 'chef');
+            setShowRoleSelector(false);
+          }}
+          className="w-full p-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+        >
+          <div className="font-bold text-lg">👨‍🍳 Chef</div>
+          <div className="text-sm mt-1">Prep log and dispatch only</div>
+        </button>
+
+        <button
+          onClick={() => {
+            setUserRole('staff');
+            localStorage.setItem('userRole', 'staff');
+            setShowRoleSelector(false);
+          }}
+          className="w-full p-4 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
+        >
+          <div className="font-bold text-lg">👥 Kitchen Staff</div>
+          <div className="text-sm mt-1">Sales tracker and orders</div>
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
+
 
       <div className="flex">
         <aside className="w-64 bg-white shadow-sm min-h-screen">
@@ -1605,19 +1805,23 @@ if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
                 </div>
                 <div className="overflow-x-auto">
                   <table className="min-w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-2 text-left">Dish Name</th>
-                        <th className="px-4 py-2 text-left">Qty Cooked (kg)</th>
-                        <th className="px-4 py-2 text-left">Container Size</th>
-                        <th className="px-4 py-2 text-left">Portion Size (g)</th>
-                        <th className="px-4 py-2 text-left">Total Portions</th>
-                        <th className="px-4 py-2 text-left">Prepared By</th>
-                        <th className="px-4 py-2 text-left">Cost per kg</th>
-                        <th className="px-4 py-2 text-left">Total Cost</th>
-                        <th className="px-4 py-2 text-left">Status</th>
-                      </tr>
-                    </thead>
+                  <thead className="bg-gray-50">
+<tr>
+  <th className="px-4 py-2 text-left">Dish Name</th>
+  <th className="px-4 py-2 text-left">Qty Cooked (kg)</th>
+  <th className="px-4 py-2 text-left">Container Size</th>
+  <th className="px-4 py-2 text-left">Portion Size (g)</th>
+  <th className="px-4 py-2 text-left">Total Portions</th>
+  <th className="px-4 py-2 text-left">Prepared By</th>
+  {currentPermissions.canSeeCosts && (
+    <>
+      <th className="px-4 py-2 text-left">Cost per kg</th>
+      <th className="px-4 py-2 text-left">Total Cost</th>
+    </>
+  )}
+  <th className="px-4 py-2 text-left">Status</th>
+</tr>
+</thead>
                     <tbody className="divide-y">
                       {prepLog.map(prep => (
                         <tr key={prep.id} className={prep.processed ? 'bg-green-50' : 'bg-yellow-50'}>
@@ -1633,8 +1837,14 @@ if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
                             <span className="font-bold text-green-600">{prep.totalPortions}p</span>
                           </td>
                           <td className="px-4 py-2">{prep.preparedBy}</td>
-                          <td className="px-4 py-2">£{calculateDishCost(prep.dishName).toFixed(2)}</td>
-                          <td className="px-4 py-2 font-medium">£{(calculateDishCost(prep.dishName) * prep.quantityCooked).toFixed(2)}</td>
+
+                          {currentPermissions.canSeeCosts && (
+                            <>
+                              <td className="px-4 py-2">£{calculateDishCost(prep.dishName).toFixed(2)}</td>
+                              <td className="px-4 py-2 font-medium">£{(calculateDishCost(prep.dishName) * prep.quantityCooked).toFixed(2)}</td>
+                            </>
+                          )}
+
                           <td className="px-4 py-2">
                             {prep.processed ? (
                               <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">Dispatched</span>
@@ -1924,6 +2134,125 @@ if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
                 <DollarSign className="mr-2" /> Sales Tracker - Live Updates Only
               </h2>
 
+
+
+              {/* Location-specific Shop Controls */}
+
+                 {/* 🔴 ADD THIS ENTIRE BLOCK HERE */}
+                 {/* Location-specific Shop Controls */}
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                   {/* Eastham Shop Control */}
+                   <div className={`p-4 rounded-lg border ${
+                     shopStatuses['Eastham'] === 'open' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                   }`}>
+                     <h3 className="font-semibold mb-2">📍 Eastham Location</h3>
+                     <div className="flex items-center justify-between">
+                       <div>
+                         <p className="text-sm">
+                           Status: {shopStatuses['Eastham'] === 'open' ? '🟢 Open' : '🔴 Closed'}
+                         </p>
+                         {shopStatuses['Eastham'] === 'open' && shopOpenTimes['Eastham'] && (
+   <>
+     <p className="text-xs text-gray-600">
+       Opened: {new Date(shopOpenTimes['Eastham']).toLocaleTimeString()}
+     </p>
+     <p className="text-sm font-medium text-gray-700">
+       Stock: {sales.filter(s => s.location === 'Eastham' && !s.endOfDay).reduce((sum, s) => sum + s.remainingPortions, 0)} portions
+     </p>
+   </>
+ )}
+                       </div>
+                       <button
+                         onClick={() => {
+                           const newStatuses = { ...shopStatuses };
+                           const newOpenTimes = { ...shopOpenTimes };
+
+                           if (shopStatuses['Eastham'] === 'closed') {
+                             // Open shop
+                             newStatuses['Eastham'] = 'open';
+                             newOpenTimes['Eastham'] = new Date().toISOString();
+                           } else {
+                             // Close shop
+                             newStatuses['Eastham'] = 'closed';
+                             delete newOpenTimes['Eastham'];
+                           }
+
+                           setShopStatuses(newStatuses);
+                           setShopOpenTimes(newOpenTimes);
+                           localStorage.setItem('shopStatuses', JSON.stringify(newStatuses));
+                           localStorage.setItem('shopOpenTimes', JSON.stringify(newOpenTimes));
+                         }}
+                         className={`px-4 py-2 rounded-lg text-white font-medium transition ${
+                           shopStatuses['Eastham'] === 'closed'
+                             ? 'bg-green-600 hover:bg-green-700'
+                             : 'bg-red-600 hover:bg-red-700'
+                         }`}
+                       >
+                         {shopStatuses['Eastham'] === 'closed' ? '🔓 Open Shop' : '🔒 Close Shop'}
+                       </button>
+                     </div>
+                   </div>
+
+                   {/* Bethnal Green Shop Control */}
+                   <div className={`p-4 rounded-lg border ${
+                     shopStatuses['Bethnal Green'] === 'open' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                   }`}>
+                     <h3 className="font-semibold mb-2">📍 Bethnal Green Location</h3>
+                     <div className="flex items-center justify-between">
+                       <div>
+                         <p className="text-sm">
+                           Status: {shopStatuses['Bethnal Green'] === 'open' ? '🟢 Open' : '🔴 Closed'}
+                         </p>
+
+
+
+                         {shopStatuses['Bethnal Green'] === 'open' && shopOpenTimes['Bethnal Green'] && (
+                           <>
+                             <p className="text-xs text-gray-600">
+                               Opened: {new Date(shopOpenTimes['Eastham']).toLocaleTimeString()}
+                             </p>
+                             <p className="text-sm font-medium text-gray-700">
+                               Stock: {sales.filter(s => s.location === 'Bethnal Green' && !s.endOfDay).reduce((sum, s) => sum + s.remainingPortions, 0)} portions
+                             </p>
+                           </>
+                         )}
+
+
+                       </div>
+                       <button
+                         onClick={() => {
+                           const newStatuses = { ...shopStatuses };
+                           const newOpenTimes = { ...shopOpenTimes };
+
+                           if (shopStatuses['Bethnal Green'] === 'closed') {
+                             // Open shop
+                             newStatuses['Bethnal Green'] = 'open';
+                             newOpenTimes['Bethnal Green'] = new Date().toISOString();
+                           } else {
+                             // Close shop
+                             newStatuses['Bethnal Green'] = 'closed';
+                             delete newOpenTimes['Bethnal Green'];
+                           }
+
+                           setShopStatuses(newStatuses);
+                           setShopOpenTimes(newOpenTimes);
+                           localStorage.setItem('shopStatuses', JSON.stringify(newStatuses));
+                           localStorage.setItem('shopOpenTimes', JSON.stringify(newOpenTimes));
+                         }}
+                         className={`px-4 py-2 rounded-lg text-white font-medium transition ${
+                           shopStatuses['Bethnal Green'] === 'closed'
+                             ? 'bg-green-600 hover:bg-green-700'
+                             : 'bg-red-600 hover:bg-red-700'
+                         }`}
+                       >
+                         {shopStatuses['Bethnal Green'] === 'closed' ? '🔓 Open Shop' : '🔒 Close Shop'}
+                       </button>
+                     </div>
+                   </div>
+                 </div>
+                 {/* 🔴 END OF NEW BLOCK */}
+
+
               {/* Simplified Workflow */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                 <h3 className="text-lg font-semibold text-blue-800 mb-3">📋 SIMPLIFIED WORKFLOW</h3>
@@ -2029,41 +2358,7 @@ if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
                 </div>
               )}
 
-              {/* End of Day Controls */}
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
-                <h3 className="text-lg font-semibold mb-3 text-orange-800">🏪 End of Day - Close Shop</h3>
-                <p className="text-sm text-orange-700 mb-4">⚠️ Important: Remaining stock will become "OLD STOCK" tomorrow and should be sold first!</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-white p-4 rounded border">
-                    <h4 className="font-medium text-gray-800 mb-2">Eastham Location</h4>
-                    <div className="text-sm text-gray-600 mb-3">
-                      <div>Current Stock: <span className="font-bold text-orange-600">{sales.filter(s => s.location === 'Eastham' && !s.endOfDay).reduce((sum, s) => sum + s.remainingPortions, 0)} portions</span></div>
-                      <div>Sold Today: <span className="font-bold text-green-600">{sales.filter(s => s.location === 'Eastham' && !s.endOfDay).reduce((sum, s) => sum + (s.receivedPortions - s.remainingPortions), 0)} portions</span></div>
-                    </div>
-                    <button
-                      onClick={() => handleEndOfDay('Eastham')}
-                      className="w-full px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
-                      disabled={sales.filter(s => s.location === 'Eastham' && !s.endOfDay).length === 0}
-                    >
-                      {sales.some(s => s.location === 'Eastham' && s.endOfDay) && sales.filter(s => s.location === 'Eastham' && !s.endOfDay).length === 0 ? '✅ Already Closed' : 'Close Eastham for Day'}
-                    </button>
-                  </div>
-                  <div className="bg-white p-4 rounded border">
-                    <h4 className="font-medium text-gray-800 mb-2">Bethnal Green Location</h4>
-                    <div className="text-sm text-gray-600 mb-3">
-                      <div>Current Stock: <span className="font-bold text-orange-600">{sales.filter(s => s.location === 'Bethnal Green' && !s.endOfDay).reduce((sum, s) => sum + s.remainingPortions, 0)} portions</span></div>
-                      <div>Sold Today: <span className="font-bold text-green-600">{sales.filter(s => s.location === 'Bethnal Green' && !s.endOfDay).reduce((sum, s) => sum + (s.receivedPortions - s.remainingPortions), 0)} portions</span></div>
-                    </div>
-                    <button
-                      onClick={() => handleEndOfDay('Bethnal Green')}
-                      className="w-full px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
-                      disabled={sales.filter(s => s.location === 'Bethnal Green' && !s.endOfDay).length === 0}
-                    >
-                      {sales.some(s => s.location === 'Bethnal Green' && s.endOfDay) && sales.filter(s => s.location === 'Bethnal Green' && !s.endOfDay).length === 0 ? '✅ Already Closed' : 'Close Bethnal Green for Day'}
-                    </button>
-                  </div>
-                </div>
-              </div>
+
 
               {/* Sales Status Table - ACTIVE ITEMS ONLY */}
               <div className="bg-white border rounded-lg">
@@ -2384,6 +2679,49 @@ if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
               <h2 className="text-2xl font-bold mb-6 flex items-center">
                 <Calendar className="mr-2" /> Smart Planning & Old Stock Analysis
               </h2>
+
+              {/* Location Selector */}
+              <div className="mb-6 flex space-x-4">
+                <select
+                  className="px-4 py-2 border rounded-lg"
+                  value={selectedLocation}
+                  onChange={(e) => setSelectedLocation(e.target.value)}
+                >
+                  <option value="all">All Locations</option>
+                  <option value="Eastham">Eastham</option>
+                  <option value="Bethnal Green">Bethnal Green</option>
+                </select>
+              </div>
+
+              {/* What to Cook First - Location Based */}
+              <div className="mb-8 bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                <h3 className="text-lg font-semibold mb-4 text-yellow-900">
+                  🔥 Priority Cooking List {selectedLocation !== 'all' && `- ${selectedLocation}`}
+                </h3>
+                <div className="space-y-3">
+                  {getLocationBasedPriorities(selectedLocation).length > 0 ? (
+                    getLocationBasedPriorities(selectedLocation).map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-white p-3 rounded-lg">
+                        <div>
+                          <span className="font-medium">{item.dish}</span>
+                          <span className="text-sm text-gray-600 ml-2">
+                            ({item.location})
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm text-red-600">Stock: {item.currentStock} portions</div>
+                          <div className="text-sm text-green-600">Need: {item.needed} portions</div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-600">All dishes are well-stocked for {selectedLocation === 'all' ? 'all locations' : selectedLocation}!</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Rest of existing smart planning content continues below... */}
+
 
               {/* Old Stock Alert */}
               {sales.filter(s => s.endOfDay && s.finalStock > 0).length > 0 && (

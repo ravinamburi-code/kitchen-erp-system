@@ -2196,7 +2196,7 @@ const UserManagement = () => {
     <div className="flex items-center justify-between">
       <div className="flex items-center space-x-4">
         <ChefHat className="text-blue-600" size={32} />
-        <h1 className="text-xl font-bold text-gray-900">Kitchen ERP System - Enhanced Version 2.0</h1>
+        <h1 className="text-xl font-bold text-gray-900">WHEELFEST KITCHEN MANAGEMENT</h1>
         <div className="flex space-x-2">
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
             shopStatuses['Eastham'] === 'open' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'

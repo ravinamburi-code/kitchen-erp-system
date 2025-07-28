@@ -189,39 +189,32 @@ const KitchenERP = () => {
     { id: 78, dishName: 'Lamb Curry', ingredient: 'Turmeric Powder Natco', quantityPer1kg: 0.003, unit: 'kg' }
   ]));
 
-  // ✅ FIXED PREP LOG WITH TEST DATA
-  const [prepLog, setPrepLog] = useState(() => loadFromStorage('prepLog', [
-    // Sample processed prep items (matching dispatch entries)
-    { id: 1, date: '2025-01-22', dishName: 'Donne Biryani Lamb', quantityCooked: 7.2, preparedBy: 'Chef Ahmed', portionSize: 160, containerSize: '500ml', totalPortions: 45, processed: true },
-    { id: 2, date: '2025-01-22', dishName: 'Chicken Curry', quantityCooked: 5.6, preparedBy: 'Chef Sarah', portionSize: 160, containerSize: '500ml', totalPortions: 35, processed: true },
-    { id: 3, date: '2025-01-22', dishName: 'Prawns Pulav', quantityCooked: 5.3, preparedBy: 'Chef Raj', portionSize: 160, containerSize: '500ml', totalPortions: 33, processed: true },
-    { id: 4, date: '2025-01-22', dishName: 'Salan', quantityCooked: 4.8, preparedBy: 'Chef Priya', portionSize: 160, containerSize: '500ml', totalPortions: 30, processed: true },
 
-    // Fresh prep items ready for dispatch (for testing)
-    { id: 5, date: '2025-01-22', dishName: 'Chicken Pakora', quantityCooked: 3.2, preparedBy: 'Chef Ahmed', portionSize: 80, containerSize: '8oz', totalPortions: 40, processed: false }
-  ]));
 
-  // ✅ FIXED DISPATCH WITH TEST DATA
-  const [dispatch, setDispatch] = useState(() => loadFromStorage('dispatch', [
-    // Sample dispatch entries for today (matching the active sales)
-    { id: 1, date: '2025-01-22', dishName: 'Donne Biryani Lamb', totalCooked: 45, easthamSent: 25, bethnalSent: 0, coldRoomStock: 20 },
-    { id: 2, date: '2025-01-22', dishName: 'Chicken Curry', totalCooked: 35, easthamSent: 20, bethnalSent: 0, coldRoomStock: 15 },
-    { id: 3, date: '2025-01-22', dishName: 'Prawns Pulav', totalCooked: 33, easthamSent: 0, bethnalSent: 18, coldRoomStock: 15 },
-    { id: 4, date: '2025-01-22', dishName: 'Salan', totalCooked: 30, easthamSent: 0, bethnalSent: 15, coldRoomStock: 15 }
-  ]));
 
-  // ✅ FIXED SALES WITH ACTIVE TEST DATA
-  const [sales, setSales] = useState(() => loadFromStorage('sales', [
-    // Sample old stock items (closed yesterday)
-    { id: 3, dishName: 'Chicken Curry', location: 'Eastham', receivedPortions: 15, remainingPortions: 0, finalStock: 4, endOfDay: true, closedDate: '2025-01-21', closedTime: '20:00:00', date: '2025-01-21', time: '20:00:00', updatedBy: 'Eastham Manager' },
-    { id: 4, dishName: 'Salan', location: 'Bethnal Green', receivedPortions: 8, remainingPortions: 0, finalStock: 2, endOfDay: true, closedDate: '2025-01-21', closedTime: '19:30:00', date: '2025-01-21', time: '19:30:00', updatedBy: 'Bethnal Manager' },
 
-    // Today's ACTIVE sales entries (ready for testing close functionality)
-    { id: 5, dishName: 'Donne Biryani Lamb', location: 'Eastham', receivedPortions: 25, remainingPortions: 8, date: '2025-01-22', time: '12:30:00', updatedBy: 'Eastham Team', autoCreated: true },
-    { id: 6, dishName: 'Chicken Curry', location: 'Eastham', receivedPortions: 20, remainingPortions: 12, date: '2025-01-22', time: '13:15:00', updatedBy: 'Eastham Team', autoCreated: true },
-    { id: 7, dishName: 'Prawns Pulav', location: 'Bethnal Green', receivedPortions: 18, remainingPortions: 5, date: '2025-01-22', time: '12:45:00', updatedBy: 'Bethnal Team', autoCreated: true },
-    { id: 8, dishName: 'Salan', location: 'Bethnal Green', receivedPortions: 15, remainingPortions: 9, date: '2025-01-22', time: '14:00:00', updatedBy: 'Bethnal Team', autoCreated: true }
-  ]));
+
+  // ✅ CLEAR PREP LOG
+const [prepLog, setPrepLog] = useState(() => loadFromStorage('prepLog', []));
+
+// ✅ CLEAR DISPATCH
+const [dispatch, setDispatch] = useState(() => loadFromStorage('dispatch', []));
+
+// ✅ CLEAR SALES
+const [sales, setSales] = useState(() => loadFromStorage('sales', []));
+
+
+// 4. AUTO-LOGIN CHECK (same as before)
+useEffect(() => {
+  const savedUser = localStorage.getItem('currentUser');
+  if (savedUser) {
+    const user = JSON.parse(savedUser);
+    setCurrentUser(user);
+    setUserRole(user.role);
+    setIsLoggedIn(true);
+    setShowRoleSelector(false);
+  }
+}, []);
 
   // Auto-save to localStorage whenever state changes
   useEffect(() => {
@@ -244,6 +237,17 @@ const KitchenERP = () => {
     localStorage.setItem('sales', JSON.stringify(sales));
   }, [sales]);
 
+  // Load initial data from Supabase on app mount
+useEffect(() => {
+  const loadInitialData = async () => {
+    console.log('Loading menu data from Supabase...');
+    await loadMenuWithRecipes();
+    // We'll add more Supabase loads here as needed
+  };
+
+  loadInitialData();
+}, []); // Empty array = runs once on mount
+
   // Add state for waste tracking
   const [wasteLog, setWasteLog] = useState(() => loadFromStorage('wasteLog', []));
 
@@ -252,7 +256,7 @@ const KitchenERP = () => {
     quantityCooked: '',
     containerSize: '500ml',
     portionSize: 160,
-    preparedBy: 'Chef Ahmed'
+    preparedBy: 'Vasanth'
   });
 
   // Add after your other useState declarations
@@ -271,7 +275,8 @@ const KitchenERP = () => {
       canSeeReports: true,
       canManageInventory: true,
       canAddStaff: true,
-      tabs: ['dashboard', 'smart-planning', 'prep', 'dispatch', 'sales', 'old-stock', 'waste', 'recipe-bank', 'inventory', 'procurement', 'reports']
+      tabs: ['dashboard', 'smart-planning', 'prep', 'dispatch', 'sales', 'old-stock', 'waste', 'recipe-bank', 'inventory', 'procurement', 'reports', 'users']
+
     },
     manager: {
       canSeeCosts: true,
@@ -296,6 +301,21 @@ const KitchenERP = () => {
     }
   };
 
+
+
+  // Replace your hardcoded login system with this Supabase version:
+
+  // 1. LOGIN STATE (keep your existing state variables)
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [loginError, setLoginError] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+
+
+
+
+
   // Get current permissions
   const currentPermissions = rolePermissions[userRole] || rolePermissions.staff;
 
@@ -305,12 +325,180 @@ const KitchenERP = () => {
     return saved ? JSON.parse(saved) : {"Eastham": "closed", "Bethnal Green": "closed"};
   });
 
+  // Add these state variables
+const [showDispatchModal, setShowDispatchModal] = useState(false);
+const [quickDispatchItem, setQuickDispatchItem] = useState('');
+const [quickDispatchQty, setQuickDispatchQty] = useState('');
+
   const [shopOpenTimes, setShopOpenTimes] = useState(() => {
     const saved = localStorage.getItem('shopOpenTimes');
     return saved ? JSON.parse(saved) : {};
   });
 
   const [selectedLocation, setSelectedLocation] = useState('all');
+
+
+  // Add these after your existing state variables
+  const [menuItems, setMenuItems] = useState([]);
+  const [recipeBank, setRecipeBank] = useState([]);
+  const [menuLoading, setMenuLoading] = useState(true);
+
+
+  // Add these new state variables
+  const [selectedSalesLocation, setSelectedSalesLocation] = useState('Eastham');
+  const [salesViewMode, setSalesViewMode] = useState('stock-tracker');
+  const [stockSearchTerm, setStockSearchTerm] = useState('');
+  const [stockCategoryFilter, setStockCategoryFilter] = useState('all');
+  const [stockStatusFilter, setStockStatusFilter] = useState('all');
+
+
+  // Add this to your KitchenERP.js file
+
+  // 1. PORTION CONFIGURATION TABLE - Add this after your state variables
+  const portionConfig = {
+    // Biryani Dishes
+    'Chicken Biryani': { portionsPerKg: 6, portionSize: 166, containerSize: '650ml' },
+    'Lamb Biryani': { portionsPerKg: 6, portionSize: 166, containerSize: '650ml' },
+    'Veg Biryani': { portionsPerKg: 6, portionSize: 166, containerSize: '650ml' },
+    'Donne Biryani Chicken': { portionsPerKg: 6, portionSize: 166, containerSize: '650ml' },
+    'Donne Biryani Lamb': { portionsPerKg: 6, portionSize: 166, containerSize: '650ml' },
+    'Prawns Pulav': { portionsPerKg: 6, portionSize: 166, containerSize: '650ml' },
+
+    // Curry Dishes
+    'Chicken Curry': { portionsPerKg: 10, portionSize: 100, containerSize: '500ml' },
+    'Lamb Curry': { portionsPerKg: 10, portionSize: 100, containerSize: '500ml' },
+    'Fish Curry': { portionsPerKg: 10, portionSize: 100, containerSize: '500ml' },
+    'Paneer Butter Masala': { portionsPerKg: 10, portionSize: 100, containerSize: '500ml' },
+    'Dal Tadka': { portionsPerKg: 10, portionSize: 100, containerSize: '500ml' },
+
+    // Starters
+    'Chicken Pakora': { portionsPerKg: 12, portionSize: 83, containerSize: '12oz' },
+    'Veg Samosa': { portionsPerKg: 15, portionSize: 66, containerSize: '8oz' },
+    'Onion Bhaji': { portionsPerKg: 15, portionSize: 66, containerSize: '8oz' },
+
+    // Sides & Chutneys
+    'Salan': { portionsPerKg: 12, portionSize: 83, containerSize: '12oz' },
+    'Raitha': { portionsPerKg: 12, portionSize: 83, containerSize: '8oz' },
+
+    // Default
+    'default': { portionsPerKg: 8, portionSize: 125, containerSize: '500ml' }
+  };
+
+  // 2. PREP SUGGESTION CALCULATOR - Add this function
+  const calculatePrepSuggestion = (dishName) => {
+    // Get portion config
+    const config = portionConfig[dishName] || portionConfig['default'];
+
+    // Get last 7 days sales for this dish
+    const last7DaysSales = sales.filter(s => {
+      const saleDate = new Date(s.date);
+      const daysAgo = (new Date() - saleDate) / (1000 * 60 * 60 * 24);
+      return daysAgo <= 7 && s.dishName === dishName;
+    });
+
+    // Calculate average daily sales
+    let avgDailySales = 20; // Default
+    if (last7DaysSales.length > 0) {
+      const totalSold = last7DaysSales.reduce((sum, s) =>
+        sum + (s.receivedPortions - s.remainingPortions), 0
+      );
+      avgDailySales = Math.round(totalSold / 7);
+    }
+
+    // Day of week multiplier
+    const dayMultiplier = {
+      0: 1.3,  // Sunday - Busy
+      1: 0.8,  // Monday - Quiet
+      2: 0.9,  // Tuesday
+      3: 0.9,  // Wednesday
+      4: 1.0,  // Thursday
+      5: 1.2,  // Friday - Busy
+      6: 1.3   // Saturday - Busy
+    };
+
+    const today = new Date().getDay();
+    const todayMultiplier = dayMultiplier[today] || 1;
+
+    // Calculate current stock (all locations)
+    const currentStock = sales
+      .filter(s => s.dishName === dishName && !s.endOfDay)
+      .reduce((sum, s) => sum + s.remainingPortions, 0);
+
+    const oldStock = sales
+      .filter(s => s.dishName === dishName && s.endOfDay && s.finalStock > 0)
+      .reduce((sum, s) => sum + s.finalStock, 0);
+
+    const totalStock = currentStock + oldStock;
+
+    // Calculate suggestion
+    const expectedDemand = Math.ceil(avgDailySales * todayMultiplier * 1.1); // 10% buffer
+    const needToPrepare = Math.max(0, expectedDemand - totalStock);
+    const kgToPrepare = Math.ceil((needToPrepare / config.portionsPerKg) * 10) / 10;
+
+    return {
+      dishName,
+      avgDailySales,
+      currentStock,
+      oldStock,
+      totalStock,
+      expectedDemand,
+      needToPrepare,
+      kgToPrepare,
+      totalPortions: Math.floor(kgToPrepare * config.portionsPerKg),
+      config,
+      priority: needToPrepare > expectedDemand * 0.5 ? 'high' :
+               needToPrepare > 0 ? 'medium' : 'low'
+    };
+  };
+
+
+
+
+
+  // Load menu items with recipes from Supabase
+  const loadMenuWithRecipes = async () => {
+    try {
+      setMenuLoading(true);
+      const { data, error } = await supabase
+        .from('menu_items')
+        .select(`
+          *,
+          recipe_bank (
+            id,
+            dish_name,
+            ingredients,
+            cost_per_kg
+          )
+        `)
+        .eq('is_active', true)
+        .order('dish_name');
+
+      if (error) throw error;
+      setMenuItems(data || []);
+      console.log('Menu loaded:', data?.length, 'items');
+    } catch (error) {
+      console.error('Error loading menu:', error);
+    } finally {
+      setMenuLoading(false);
+    }
+  };
+
+  // Helper: Get dishes for prep log dropdown
+  const getRecipeDishes = () => {
+    return menuItems
+      .filter(item => item.requires_recipe)
+      .map(item => item.dish_name)
+      .filter((dish, index, self) => self.indexOf(dish) === index)
+      .sort();
+  };
+
+  // Helper: Get menu by location
+  const getMenuByLocation = (location) => {
+    if (location === 'all') {
+      return menuItems;
+    }
+    return menuItems.filter(item => item.location === location);
+  };
 
 
   const [newDispatchEntry, setNewDispatchEntry] = useState({
@@ -327,6 +515,8 @@ const KitchenERP = () => {
     receivedPortions: '',
     remainingPortions: ''
   });
+
+
 
   const [newWasteEntry, setNewWasteEntry] = useState({
     dishName: '',
@@ -351,28 +541,46 @@ const KitchenERP = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
 
 
-
-      // Helper function for location-based priorities
+  // Helper function for location-based priorities using real menu data
   const getLocationBasedPriorities = (location) => {
-    const dishes = ['Chicken Biryani', 'Vegetable Curry', 'Tandoori Chicken', 'Lamb Karahi', 'Dal Tadka'];
+    // Get menu items for the selected location
+    const locationMenu = getMenuByLocation(location);
+
     const priorities = [];
 
-    dishes.forEach(dish => {
+    locationMenu.forEach(menuItem => {
+      // Skip inventory-only items
+      if (!menuItem.requires_recipe) return;
+
+      const dish = menuItem.dish_name;
+
+      // Check prep log for this dish
       const stock = prepLog.filter(p =>
         p.dishName === dish &&
-        p.status === 'prepared' &&
-        (location === 'all' || p.location === location)
+        p.status === 'prepared'
       );
 
       const totalStock = stock.reduce((sum, item) => sum + item.totalPortions, 0);
-      const avgDailySales = 25; // This should come from your sales data
 
+      // Check sales data for demand
+      const recentSales = sales.filter(s =>
+        s.dishName === dish &&
+        (location === 'all' || s.location === location)
+      );
+
+      const avgDailySales = recentSales.length > 0
+        ? recentSales.reduce((sum, s) => sum + (s.receivedPortions - s.remainingPortions), 0) / Math.max(1, recentSales.length)
+        : 20; // Default estimate
+
+      // Priority if stock is low
       if (totalStock < avgDailySales * 0.5) {
         priorities.push({
           dish,
           location: location === 'all' ? 'Both Locations' : location,
           currentStock: totalStock,
-          needed: Math.ceil(avgDailySales * 1.5)
+          needed: Math.ceil(avgDailySales * 1.5),
+          avgSales: Math.round(avgDailySales),
+          category: menuItem.category
         });
       }
     });
@@ -500,176 +708,283 @@ const KitchenERP = () => {
     return insufficientIngredients;
   };
 
-  // UPDATED VERSION (with database)
-const handlePrepSubmit = async () => {  // ← ADD async
-  if (newPrepEntry.dishName && newPrepEntry.quantityCooked && newPrepEntry.portionSize && newPrepEntry.preparedBy) {
-    // Check ingredient availability (existing code)
-    const shortages = checkIngredientAvailability(newPrepEntry.dishName, parseFloat(newPrepEntry.quantityCooked));
+  const handlePrepSubmit = async () => {
+    if (newPrepEntry.dishName && newPrepEntry.quantityCooked && newPrepEntry.portionSize && newPrepEntry.preparedBy) {
+      // Check ingredient availability (existing code)
+      const shortages = checkIngredientAvailability(newPrepEntry.dishName, parseFloat(newPrepEntry.quantityCooked));
 
-    if (shortages.length > 0) {
-      // ... existing shortage check code ...
+      if (shortages.length > 0) {
+        const shortageMsg = shortages.map(s =>
+          `${s.ingredient}: Need ${s.required.toFixed(2)} but only have ${s.available.toFixed(2)}`
+        ).join('\n');
+
+        if (!window.confirm(`⚠️ Insufficient ingredients:\n\n${shortageMsg}\n\nProceed anyway?`)) {
+          return;
+        }
+      }
+
+      const totalPortions = Math.floor((parseFloat(newPrepEntry.quantityCooked) * 1000) / newPrepEntry.portionSize);
+      const now = new Date();
+
+      const newEntry = {
+        id: prepLog.length > 0 ? Math.max(...prepLog.map(p => p.id)) + 1 : 1,
+        date: now.toISOString().split('T')[0],
+        timestamp: now.toISOString(), // ADD THIS - Full timestamp for age tracking
+        prepTime: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }), // ADD THIS
+        dishName: newPrepEntry.dishName,
+        quantityCooked: parseFloat(newPrepEntry.quantityCooked),
+        preparedBy: newPrepEntry.preparedBy,
+        portionSize: parseInt(newPrepEntry.portionSize),
+        containerSize: newPrepEntry.containerSize,
+        totalPortions,
+        processed: false,
+        ageInHours: 0, // ADD THIS - Will be calculated dynamically
+        status: 'fresh' // ADD THIS - fresh/aging/old
+      };
+
+      // Convert to database format
+      const dbEntry = {
+        dish_name: newEntry.dishName,
+        quantity_cooked: newEntry.quantityCooked,
+        prepared_by: newEntry.preparedBy,
+        portion_size: newEntry.portionSize,
+        container_size: newEntry.containerSize,
+        total_portions: newEntry.totalPortions,
+        processed: false,
+        timestamp: newEntry.timestamp, // ADD THIS to database
+        prep_time: newEntry.prepTime,
+        status: 'fresh'
+      };
+
+      // Save to database
+      await saveToDatabase('prep_log', dbEntry);
+
+      // Keep existing local state update
+      setPrepLog(prev => [...prev, newEntry]);
+
+      // Reset form
+      setNewPrepEntry({
+        dishName: '',
+        quantityCooked: '',
+        containerSize: '500ml',
+        portionSize: 160,
+        preparedBy: newPrepEntry.preparedBy // Keep chef name
+      });
+
+      // Success message with portion config info
+      const config = portionConfig[newEntry.dishName] || portionConfig['default'];
+      alert(`✅ Successfully added ${totalPortions} portions of ${newEntry.dishName}!\n\n📦 Using ${config.containerSize} containers\n⚖️ ${config.portionSize}g per portion\n👨‍🍳 Prepared by ${newEntry.preparedBy}`);
+    } else {
+      alert('Please fill in all required fields');
+    }
+  };
+
+// Find this function in your code and replace it with this fixed version:
+
+const handleDispatchSubmit = async () => {  // ← Make sure 'async' is here!
+  if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
+    const eastham = parseInt(newDispatchEntry.easthamSent) || 0;
+    const bethnal = parseInt(newDispatchEntry.bethnalSent) || 0;
+    const coldRoom = parseInt(newDispatchEntry.coldRoomStock) || 0;
+    const total = parseInt(newDispatchEntry.totalCooked);
+
+    // Keep your validation
+    if (eastham + bethnal + coldRoom !== total) {
+      alert(`❌ Invalid Distribution! Total: ${total}, but sum is ${eastham + bethnal + coldRoom}`);
+      return;
     }
 
-    const totalPortions = Math.floor((parseFloat(newPrepEntry.quantityCooked) * 1000) / newPrepEntry.portionSize);
     const newEntry = {
-      id: prepLog.length > 0 ? Math.max(...prepLog.map(p => p.id)) + 1 : 1,
+      id: dispatch.length > 0 ? Math.max(...dispatch.map(d => d.id)) + 1 : 1,
       date: new Date().toISOString().split('T')[0],
-      dishName: newPrepEntry.dishName,
-      quantityCooked: parseFloat(newPrepEntry.quantityCooked),
-      preparedBy: newPrepEntry.preparedBy,
-      portionSize: parseInt(newPrepEntry.portionSize),
-      containerSize: newPrepEntry.containerSize,
-      totalPortions,
-      processed: false
+      dishName: newDispatchEntry.dishName,
+      totalCooked: total,
+      easthamSent: eastham,
+      bethnalSent: bethnal,
+      coldRoomStock: coldRoom
     };
 
-
-
-    // ⭐ ADD THESE NEW LINES FOR DATABASE!
-    // Convert to database format (snake_case)
+    // ⭐ ADD DATABASE SAVE
     const dbEntry = {
       dish_name: newEntry.dishName,
-      quantity_cooked: newEntry.quantityCooked,
-      prepared_by: newEntry.preparedBy,
-      portion_size: newEntry.portionSize,
-      container_size: newEntry.containerSize,
-      total_portions: newEntry.totalPortions,
-      processed: false
+      total_cooked: newEntry.totalCooked,
+      eastham_sent: newEntry.easthamSent,
+      bethnal_sent: newEntry.bethnalSent,
+      cold_room_stock: newEntry.coldRoomStock
     };
 
-    // Save to database
-    await saveToDatabase('prep_log', dbEntry);
-    // ⭐ END OF NEW LINES
+    await saveToDatabase('dispatch', dbEntry);  // ← This await is now inside an async function
+    // ⭐ END DATABASE SAVE
 
-    // Keep existing local state update
-    setPrepLog(prev => [...prev, newEntry]);
+    setDispatch(prev => [...prev, newEntry]);
 
-    // Reset form (existing code)
-    setNewPrepEntry({
+    // AUTO-CREATE SALES ENTRIES FOR EACH LOCATION
+    if (eastham > 0) {
+      const easthamSalesEntry = {
+        id: sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 100 : 100,
+        dishName: newDispatchEntry.dishName,
+        location: 'Eastham',
+        receivedPortions: eastham,
+        remainingPortions: eastham,
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toLocaleTimeString(),
+        updatedBy: 'Auto-Created from Dispatch',
+        autoCreated: true
+      };
+
+      // ⭐ SAVE EASTHAM SALES TO DATABASE
+      await saveToDatabase('sales', {
+        dish_name: easthamSalesEntry.dishName,
+        location: easthamSalesEntry.location,
+        received_portions: easthamSalesEntry.receivedPortions,
+        remaining_portions: easthamSalesEntry.remainingPortions,
+        updated_by: easthamSalesEntry.updatedBy,
+        auto_created: true
+      });
+
+      setSales(prev => [...prev, easthamSalesEntry]);
+    }
+
+    if (bethnal > 0) {
+      const bethnalSalesEntry = {
+        id: sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 200 : 200,
+        dishName: newDispatchEntry.dishName,
+        location: 'Bethnal Green',
+        receivedPortions: bethnal,
+        remainingPortions: bethnal,
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toLocaleTimeString(),
+        updatedBy: 'Auto-Created from Dispatch',
+        autoCreated: true
+      };
+
+      // ⭐ SAVE BETHNAL SALES TO DATABASE
+      await saveToDatabase('sales', {
+        dish_name: bethnalSalesEntry.dishName,
+        location: bethnalSalesEntry.location,
+        received_portions: bethnalSalesEntry.receivedPortions,
+        remaining_portions: bethnalSalesEntry.remainingPortions,
+        updated_by: bethnalSalesEntry.updatedBy,
+        auto_created: true
+      });
+
+      setSales(prev => [...prev, bethnalSalesEntry]);
+    }
+
+    // Rest of your existing code...
+    setPrepLog(prev => prev.map(p => {
+      if (p.dishName === newDispatchEntry.dishName && !p.processed) {
+        return { ...p, processed: true };
+      }
+      return p;
+    }));
+
+    setNewDispatchEntry({
       dishName: '',
-      quantityCooked: '',
-      containerSize: '500ml',
-      portionSize: 160,
-      preparedBy: 'Chef Ahmed'
+      totalCooked: '',
+      easthamSent: '',
+      bethnalSent: '',
+      coldRoomStock: ''
     });
 
-    alert(`Successfully added ${totalPortions} portions of ${newEntry.dishName} to prep log`);
+    alert(`✅ Successfully dispatched ${total} portions of ${newDispatchEntry.dishName}!\n\n📍 Eastham: ${eastham}p (Sales entry auto-created)\n📍 Bethnal Green: ${bethnal}p (Sales entry auto-created)\n🏪 Cold Room: ${coldRoom}p`);
   } else {
-    alert('Please fill in all required fields');
+    alert('Please fill in Dish Name and Total Available portions');
   }
 };
 
-const handleDispatchSubmit = async () => {  // ← Add async
-if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
-  const eastham = parseInt(newDispatchEntry.easthamSent) || 0;
-  const bethnal = parseInt(newDispatchEntry.bethnalSent) || 0;
-  const coldRoom = parseInt(newDispatchEntry.coldRoomStock) || 0;
-  const total = parseInt(newDispatchEntry.totalCooked);
 
-  // Strict validation - must equal exactly
-  if (eastham + bethnal + coldRoom !== total) {
-    alert(`❌ Invalid Distribution!\n\nTotal Available: ${total} portions\nYour Distribution: ${eastham + bethnal + coldRoom} portions\n\nEastham (${eastham}) + Bethnal Green (${bethnal}) + Cold Room (${coldRoom}) must equal ${total}`);
+// 2. UPDATED LOGIN HANDLER WITH SUPABASE
+const handleLogin = async (e) => {
+  e.preventDefault();
+  setLoginLoading(true);
+  setLoginError('');
+
+  try {
+    // Query Supabase for user
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('username', loginForm.username)
+      .eq('password', loginForm.password)
+      .eq('is_active', true)
+      .single();
+
+    if (error || !user) {
+      setLoginError('Invalid username or password');
+      setLoginLoading(false);
+      return;
+    }
+
+    // Login successful
+    setIsLoggedIn(true);
+    setCurrentUser(user);
+    setUserRole(user.role);
+    setShowRoleSelector(false);
+    localStorage.setItem('userRole', user.role);
+    localStorage.setItem('currentUser', JSON.stringify(user));
+    setLoginError('');
+    setLoginLoading(false);
+
+  } catch (error) {
+    console.error('Login error:', error);
+    setLoginError('Login failed. Please try again.');
+    setLoginLoading(false);
+  }
+};
+
+const handleLogout = () => {
+  // Clear everything
+  localStorage.removeItem('userRole');
+  localStorage.removeItem('currentUser');
+  localStorage.removeItem('isLoggedIn');
+
+  // Set states to show login screen
+  setIsLoggedIn(false);  // THIS IS THE KEY!
+  setCurrentUser(null);
+  setUserRole(null);
+  setShowRoleSelector(false);
+  setActiveTab('dashboard');
+
+  // Optional: Clear form data
+  setLoginForm({ username: '', password: '' });
+};
+
+
+
+
+
+// ADD THE DELETE FUNCTION RIGHT AFTER IT:
+const handleDeletePrepItem = async (prepId) => {
+  const prepItem = prepLog.find(p => p.id === prepId);
+
+  if (!prepItem) return;
+
+  // Check if item is already dispatched
+  if (prepItem.processed) {
+    alert('❌ Cannot delete dispatched items!');
     return;
   }
 
-  const newEntry = {
-    id: dispatch.length > 0 ? Math.max(...dispatch.map(d => d.id)) + 1 : 1,
-    date: new Date().toISOString().split('T')[0],
-    dishName: newDispatchEntry.dishName,
-    totalCooked: total,
-    easthamSent: eastham,
-    bethnalSent: bethnal,
-    coldRoomStock: coldRoom
-  };
-
-  // ⭐ ADD DATABASE SAVE
-  const dbEntry = {
-    dish_name: newEntry.dishName,
-    total_cooked: newEntry.totalCooked,
-    eastham_sent: newEntry.easthamSent,
-    bethnal_sent: newEntry.bethnalSent,
-    cold_room_stock: newEntry.coldRoomStock
-  };
-
-  await saveToDatabase('dispatch', dbEntry);
-  // ⭐ END DATABASE SAVE
-
-  setDispatch(prev => [...prev, newEntry]);
-
-  // AUTO-CREATE SALES ENTRIES FOR EACH LOCATION
-  if (eastham > 0) {
-    const easthamSalesEntry = {
-      id: sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 100 : 100,
-      dishName: newDispatchEntry.dishName,
-      location: 'Eastham',
-      receivedPortions: eastham,
-      remainingPortions: eastham,
-      date: new Date().toISOString().split('T')[0],
-      time: new Date().toLocaleTimeString(),
-      updatedBy: 'Auto-Created from Dispatch',
-      autoCreated: true
-    };
-
-    // ⭐ SAVE EASTHAM SALES TO DATABASE
-    await saveToDatabase('sales', {
-      dish_name: easthamSalesEntry.dishName,
-      location: easthamSalesEntry.location,
-      received_portions: easthamSalesEntry.receivedPortions,
-      remaining_portions: easthamSalesEntry.remainingPortions,
-      updated_by: easthamSalesEntry.updatedBy,
-      auto_created: true
-    });
-
-    setSales(prev => [...prev, easthamSalesEntry]);
+  // Confirm deletion
+  if (!window.confirm(`Delete ${prepItem.dishName} (${prepItem.totalPortions} portions)?`)) {
+    return;
   }
 
-  if (bethnal > 0) {
-    const bethnalSalesEntry = {
-      id: sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 200 : 200,
-      dishName: newDispatchEntry.dishName,
-      location: 'Bethnal Green',
-      receivedPortions: bethnal,
-      remainingPortions: bethnal,
-      date: new Date().toISOString().split('T')[0],
-      time: new Date().toLocaleTimeString(),
-      updatedBy: 'Auto-Created from Dispatch',
-      autoCreated: true
-    };
+  try {
+    // Remove from local state
+    setPrepLog(prev => prev.filter(p => p.id !== prepId));
 
-    // ⭐ SAVE BETHNAL SALES TO DATABASE
-    await saveToDatabase('sales', {
-      dish_name: bethnalSalesEntry.dishName,
-      location: bethnalSalesEntry.location,
-      received_portions: bethnalSalesEntry.receivedPortions,
-      remaining_portions: bethnalSalesEntry.remainingPortions,
-      updated_by: bethnalSalesEntry.updatedBy,
-      auto_created: true
-    });
+    // If using database, also delete from there
+    // await supabase.from('prep_log').delete().eq('id', prepId);
 
-    setSales(prev => [...prev, bethnalSalesEntry]);
+    alert('✅ Prep entry deleted successfully');
+  } catch (error) {
+    console.error('Error deleting prep item:', error);
+    alert('❌ Error deleting item');
   }
-
-  // Rest of your existing code...
-  setPrepLog(prev => prev.map(p => {
-    if (p.dishName === newDispatchEntry.dishName && !p.processed) {
-      return { ...p, processed: true };
-    }
-    return p;
-  }));
-
-  setNewDispatchEntry({
-    dishName: '',
-    totalCooked: '',
-    easthamSent: '',
-    bethnalSent: '',
-    coldRoomStock: ''
-  });
-
-  alert(`✅ Successfully dispatched ${total} portions of ${newDispatchEntry.dishName}!\n\n📍 Eastham: ${eastham}p (Sales entry auto-created)\n📍 Bethnal Green: ${bethnal}p (Sales entry auto-created)\n🏪 Cold Room: ${coldRoom}p`);
-} else {
-  alert('Please fill in Dish Name and Total Available portions');
-}
 };
+
 
   // Edit sales item function
   const handleEditSalesItem = (sale) => {
@@ -813,6 +1128,172 @@ if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
   }
 };
 
+
+// 6. QUICK USER MANAGEMENT COMPONENT (Add to owner's view)
+const UserManagement = () => {
+  const [users, setUsers] = useState([]);
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [newUser, setNewUser] = useState({
+    username: '',
+    password: '',
+    name: '',
+    role: 'staff',
+    location: 'Eastham'
+  });
+
+  // Load users
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error) setUsers(data || []);
+  };
+
+  const handleAddUser = async () => {
+    const { error } = await supabase
+      .from('users')
+      .insert([newUser]);
+
+    if (!error) {
+      alert('User added successfully!');
+      setShowAddUser(false);
+      setNewUser({ username: '', password: '', name: '', role: 'staff', location: 'Eastham' });
+      loadUsers();
+    } else {
+      alert('Error adding user: ' + error.message);
+    }
+  };
+
+  const toggleUserStatus = async (userId, currentStatus) => {
+    const { error } = await supabase
+      .from('users')
+      .update({ is_active: !currentStatus })
+      .eq('id', userId);
+
+    if (!error) {
+      loadUsers();
+    }
+  };
+
+  return (
+    <div className="p-6">
+      <h2 className="text-2xl font-bold mb-6 flex items-center">
+        <Users className="mr-2" /> User Management
+      </h2>
+
+      <button
+        onClick={() => setShowAddUser(!showAddUser)}
+        className="mb-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+      >
+        <Plus className="inline mr-1" size={16} />
+        Add New User
+      </button>
+
+      {showAddUser && (
+        <div className="bg-white border rounded-lg p-4 mb-6">
+          <h3 className="font-semibold mb-3">Add New User</h3>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+            <input
+              placeholder="Username"
+              value={newUser.username}
+              onChange={(e) => setNewUser({...newUser, username: e.target.value})}
+              className="px-3 py-2 border rounded"
+            />
+            <input
+              placeholder="Password"
+              value={newUser.password}
+              onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+              className="px-3 py-2 border rounded"
+            />
+            <input
+              placeholder="Full Name"
+              value={newUser.name}
+              onChange={(e) => setNewUser({...newUser, name: e.target.value})}
+              className="px-3 py-2 border rounded"
+            />
+            <select
+              value={newUser.role}
+              onChange={(e) => setNewUser({...newUser, role: e.target.value})}
+              className="px-3 py-2 border rounded"
+            >
+              <option value="staff">Staff</option>
+              <option value="chef">Chef</option>
+              <option value="manager">Manager</option>
+              <option value="owner">Owner</option>
+            </select>
+            <button
+              onClick={handleAddUser}
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            >
+              Add User
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white border rounded-lg">
+        <table className="min-w-full">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-2 text-left">Username</th>
+              <th className="px-4 py-2 text-left">Name</th>
+              <th className="px-4 py-2 text-left">Role</th>
+              <th className="px-4 py-2 text-left">Location</th>
+              <th className="px-4 py-2 text-left">Status</th>
+              <th className="px-4 py-2 text-left">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {users.map(user => (
+              <tr key={user.id}>
+                <td className="px-4 py-2">{user.username}</td>
+                <td className="px-4 py-2">{user.name}</td>
+                <td className="px-4 py-2">
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    user.role === 'owner' ? 'bg-purple-100 text-purple-800' :
+                    user.role === 'manager' ? 'bg-blue-100 text-blue-800' :
+                    user.role === 'chef' ? 'bg-green-100 text-green-800' :
+                    'bg-orange-100 text-orange-800'
+                  }`}>
+                    {user.role}
+                  </span>
+                </td>
+                <td className="px-4 py-2">{user.location || '-'}</td>
+                <td className="px-4 py-2">
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {user.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </td>
+                <td className="px-4 py-2">
+                  <button
+                    onClick={() => toggleUserStatus(user.id, user.is_active)}
+                    className={`px-3 py-1 rounded text-xs ${
+                      user.is_active
+                        ? 'bg-red-600 text-white hover:bg-red-700'
+                        : 'bg-green-600 text-white hover:bg-green-700'
+                    }`}
+                  >
+                    {user.is_active ? 'Deactivate' : 'Activate'}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+
   // Dashboard Component
   const Dashboard = () => {
     const inventoryMetrics = getInventoryMetrics();
@@ -902,10 +1383,101 @@ if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
                     Received: {received}p | Sold: {sold}p | Remaining: {received - sold}p
                   </div>
                 </div>
+
+
               );
             })}
           </div>
 
+          {/* Cold Room Stock - Improved */}
+  <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+    <h3 className="text-lg font-semibold mb-3 text-blue-900">
+      🥶 Cold Room Stock (Remaining After Dispatch)
+    </h3>
+    {(() => {
+      // Get items with remaining portions
+      const coldRoomItems = prepLog.map(prep => {
+        // Find all dispatches for this item
+        const dispatches = dispatch.filter(d =>
+          d.dishName === prep.dishName &&
+          d.date === prep.date
+        );
+
+        const totalDispatched = dispatches.reduce((sum, d) =>
+          sum + (d.easthamSent || 0) + (d.bethnalSent || 0), 0
+        );
+
+        const remaining = prep.totalPortions - totalDispatched;
+
+        if (remaining > 0 && prep.status === 'prepared') {
+          return {
+            ...prep,
+            remainingPortions: remaining,
+            dispatchedPortions: totalDispatched,
+            age: Math.floor((new Date() - new Date(prep.timestamp)) / (1000 * 60 * 60 * 24)) // days
+          };
+        }
+        return null;
+      }).filter(item => item !== null);
+
+      // Group by dish
+      const groupedByDish = coldRoomItems.reduce((acc, item) => {
+        if (!acc[item.dishName]) {
+          acc[item.dishName] = {
+            dishName: item.dishName,
+            totalRemaining: 0,
+            oldestBatch: item.age,
+            batches: []
+          };
+        }
+        acc[item.dishName].totalRemaining += item.remainingPortions;
+        acc[item.dishName].oldestBatch = Math.max(acc[item.dishName].oldestBatch, item.age);
+        acc[item.dishName].batches.push({
+          preparedBy: item.preparedBy,
+          remaining: item.remainingPortions,
+          age: item.age,
+          date: item.date
+        });
+        return acc;
+      }, {});
+
+      return Object.keys(groupedByDish).length > 0 ? (
+        <div className="space-y-3">
+          {Object.values(groupedByDish)
+            .sort((a, b) => b.oldestBatch - a.oldestBatch) // Oldest first
+            .map((item, idx) => (
+            <div key={idx} className={`p-3 rounded border ${
+              item.oldestBatch >= 2 ? 'bg-red-50 border-red-300' :
+              item.oldestBatch >= 1 ? 'bg-yellow-50 border-yellow-300' :
+              'bg-white border-blue-300'
+            }`}>
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="font-medium">{item.dishName}</div>
+                  <div className="text-sm text-gray-600">
+                    Total in Cold Room: {item.totalRemaining} portions
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {item.batches.length} batch(es) • Oldest: {item.oldestBatch} day(s)
+                  </div>
+                </div>
+                {item.oldestBatch >= 1 && (
+                  <span className="text-xs font-medium text-red-600">
+                    ⚠️ Dispatch First!
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+          <div className="text-xs text-gray-600 italic">
+            💡 Tip: Always dispatch older batches first to maintain freshness
+          </div>
+        </div>
+      ) : (
+        <p className="text-gray-600">No items in cold room - all fully dispatched!</p>
+      );
+    })()}
+  </div>
           {/* Best Sellers */}
           <div className="bg-white border rounded-lg p-4">
             <h3 className="text-lg font-semibold mb-4 flex items-center">
@@ -1369,7 +1941,8 @@ if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
     { id: 'recipe-bank', label: 'Recipe Bank', icon: ChefHat },
     { id: 'inventory', label: 'Inventory', icon: Package },
     { id: 'procurement', label: 'Procurement', icon: ShoppingCart },
-    { id: 'reports', label: 'Reports', icon: FileText }
+    { id: 'reports', label: 'Reports', icon: FileText },
+    { id: 'users', label: 'Users', icon: Users }
   ];
 
   // Filter tabs based on current role
@@ -1543,6 +2116,79 @@ if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
     );
   };
 
+  // 5. ENHANCED LOGIN SCREEN
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
+          <div className="text-center mb-8">
+            <ChefHat className="mx-auto text-blue-600 mb-4" size={48} />
+            <h1 className="text-2xl font-bold text-gray-900">Kitchen ERP System</h1>
+            <p className="text-gray-600 mt-2">Please login to continue</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Username
+              </label>
+              <input
+                type="text"
+                value={loginForm.username}
+                onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter username"
+                required
+                disabled={loginLoading}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Password
+              </label>
+              <input
+                type="password"
+                value={loginForm.password}
+                onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter password"
+                required
+                disabled={loginLoading}
+              />
+            </div>
+
+            {loginError && (
+              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">
+                {loginError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loginLoading}
+              className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition font-medium disabled:bg-gray-400"
+            >
+              {loginLoading ? 'Logging in...' : 'Login'}
+            </button>
+          </form>
+
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+            <p className="text-sm font-medium text-gray-700 mb-2">Login Credentials:</p>
+            <div className="text-xs text-gray-600 space-y-1">
+              <div>👑 Owner: owner / owner123</div>
+              <div>💼 Manager: manager / manager123</div>
+              <div>👨‍🍳 Chef: vasanth / chef123</div>
+              <div>👥 Staff: eastham / staff123</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+
+
   return (
     <div className="min-h-screen bg-gray-100">
     <nav className="bg-white shadow-sm border-b">
@@ -1570,31 +2216,38 @@ if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
           Central Prep Kitchen | Eastham & Bethnal Green Locations
         </div>
         {userRole && (
-          <div className="flex items-center space-x-2">
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-              userRole === 'owner' ? 'bg-purple-100 text-purple-800' :
-              userRole === 'manager' ? 'bg-blue-100 text-blue-800' :
-              userRole === 'chef' ? 'bg-green-100 text-green-800' :
-              'bg-orange-100 text-orange-800'
-            }`}>
-              {userRole === 'owner' ? '👑 Owner' :
-               userRole === 'manager' ? '💼 Manager' :
-               userRole === 'chef' ? '👨‍🍳 Chef' :
-               '👥 Staff'}
-            </span>
-            <button
-              onClick={() => {
-                localStorage.removeItem('userRole');
-                setUserRole(null);
-                setShowRoleSelector(true);
-                setActiveTab(tabs[0]?.id || 'dashboard');
-              }}
-              className="text-xs text-blue-600 hover:text-blue-800"
-            >
-              Switch Role
-            </button>
-          </div>
-        )}
+    <div className="flex items-center space-x-2">
+      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+        userRole === 'owner' ? 'bg-purple-100 text-purple-800' :
+        userRole === 'manager' ? 'bg-blue-100 text-blue-800' :
+        userRole === 'chef' ? 'bg-green-100 text-green-800' :
+        'bg-orange-100 text-orange-800'
+      }`}>
+        {userRole === 'owner' ? '👑 Owner' :
+         userRole === 'manager' ? '💼 Manager' :
+         userRole === 'chef' ? '👨‍🍳 Chef' :
+         '👥 Staff'}
+      </span>
+      <button
+        onClick={() => {
+          localStorage.removeItem('userRole');
+          setUserRole(null);
+          setShowRoleSelector(true);
+          setActiveTab(tabs[0]?.id || 'dashboard');
+        }}
+        className="text-xs text-blue-600 hover:text-blue-800"
+      >
+        Switch Role
+      </button>
+      <button
+  onClick={handleLogout}
+  className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+>
+  Logout
+</button>
+    </div>
+  )}
+
       </div>
     </div>
   </div>
@@ -1686,126 +2339,225 @@ if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
         <main className="flex-1">
           {activeTab === 'dashboard' && <Dashboard />}
 
-          {activeTab === 'prep' && (
-            <div className="p-6">
-              <h2 className="text-2xl font-bold mb-6 flex items-center">
-                <ChefHat className="mr-2" /> Prep Log - Chef Entry System
-              </h2>
+          {/* 3. ENHANCED PREP LOG COMPONENT - Replace your existing prep tab content */}
 
-              {/* Prep Entry Form */}
-              <div className="bg-white border rounded-lg p-6 mb-6">
-                <h3 className="text-lg font-semibold mb-4">🧑‍🍳 Add New Prep Entry</h3>
-                <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Dish Name *</label>
-                    <select
-                      value={newPrepEntry.dishName}
-                      onChange={(e) => {
-                        const dishName = e.target.value;
-                        setNewPrepEntry(prev => ({
-                          ...prev,
-                          dishName,
-                          containerSize: '500ml',
-                          portionSize: 160
-                        }));
-                      }}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Select Dish</option>
-                      {[...new Set(recipes.map(r => r.dishName))].sort().map(dish => (
-                        <option key={dish} value={dish}>{dish}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Quantity (kg) *</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={newPrepEntry.quantityCooked}
-                      onChange={(e) => setNewPrepEntry(prev => ({ ...prev, quantityCooked: e.target.value }))}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-                      placeholder="5.0"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Container Size</label>
-                    <select
-                      value={newPrepEntry.containerSize}
-                      onChange={(e) => {
-                        const container = containerSizes.find(c => c.size === e.target.value);
-                        setNewPrepEntry(prev => ({
-                          ...prev,
-                          containerSize: e.target.value,
-                          portionSize: container ? container.portionWeight : prev.portionSize
-                        }));
-                      }}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-                    >
-                      {containerSizes.map(container => (
-                        <option key={container.size} value={container.size}>
-                          {container.size} ({container.category})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Portion Size (g)</label>
-                    <input
-                      type="number"
-                      value={newPrepEntry.portionSize}
-                      onChange={(e) => setNewPrepEntry(prev => ({ ...prev, portionSize: parseInt(e.target.value) }))}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-                      placeholder="160"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Chef Name</label>
-                    <select
-                      value={newPrepEntry.preparedBy}
-                      onChange={(e) => setNewPrepEntry(prev => ({ ...prev, preparedBy: e.target.value }))}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="Chef Ahmed">Chef Ahmed</option>
-                      <option value="Chef Sarah">Chef Sarah</option>
-                      <option value="Chef Raj">Chef Raj</option>
-                      <option value="Chef Priya">Chef Priya</option>
-                    </select>
-                  </div>
-                  <div className="flex items-end">
-                    <button
-                      onClick={handlePrepSubmit}
-                      className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:ring-2 focus:ring-green-500"
-                    >
-                      <Plus size={16} className="inline mr-1" />
-                      Add Prep
-                    </button>
-                  </div>
-                </div>
 
-                {/* Live Calculation Display */}
-                {newPrepEntry.quantityCooked && newPrepEntry.portionSize && (
-                  <div className="mt-4 p-3 bg-green-50 rounded border border-green-200">
-                    <div className="text-sm text-green-800">
-                      <span className="font-medium">Total Portions: </span>
-                      <span className="text-lg font-bold">
-                        {Math.floor((parseFloat(newPrepEntry.quantityCooked) * 1000) / newPrepEntry.portionSize)}
-                      </span>
-                      <span className="ml-4 text-green-600">Ready for dispatch once prep is complete</span>
+
+
+    {activeTab === 'prep' && (
+      <div className="p-6">
+        <h2 className="text-2xl font-bold mb-6 flex items-center">
+          <ChefHat className="mr-2" /> Smart Prep Planning
+        </h2>
+
+        {/* Smart Prep Suggestions */}
+        <div className="mb-6 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-blue-800">
+              🧠 Today's Prep Suggestions - {new Date().toLocaleDateString('en-US', { weekday: 'long' })}
+            </h3>
+            <span className="text-sm text-gray-600">
+              Based on last week's sales
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {getRecipeDishes().map(dishName => {
+              const suggestion = calculatePrepSuggestion(dishName);
+
+              // Skip if no prep needed
+              if (suggestion.kgToPrepare === 0) return null;
+
+              return (
+                <div
+                  key={dishName}
+                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${
+                    suggestion.priority === 'high'
+                      ? 'bg-red-50 border-red-300 hover:border-red-400'
+                      : suggestion.priority === 'medium'
+                      ? 'bg-yellow-50 border-yellow-300 hover:border-yellow-400'
+                      : 'bg-green-50 border-green-300 hover:border-green-400'
+                  }`}
+                  onClick={() => {
+                    // Auto-fill prep form
+                    setNewPrepEntry({
+                      dishName: suggestion.dishName,
+                      quantityCooked: suggestion.kgToPrepare.toString(),
+                      containerSize: suggestion.config.containerSize,
+                      portionSize: suggestion.config.portionSize,
+                      preparedBy: newPrepEntry.preparedBy
+                    });
+                  }}
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="font-bold text-lg">{suggestion.dishName}</h4>
+                      <p className="text-sm text-gray-600">
+                        Current: {suggestion.totalStock}p
+                        {suggestion.oldStock > 0 && (
+                          <span className="text-orange-600 ml-2">
+                            ({suggestion.oldStock}p old stock!)
+                          </span>
+                        )}
+                        • Avg daily: {suggestion.avgDailySales}p
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold">
+                        Make {suggestion.kgToPrepare} kg
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        = {suggestion.totalPortions} portions
+                      </div>
+                      <div className="text-xs text-blue-600 mt-1">
+                        Click to prep this
+                      </div>
                     </div>
                   </div>
+                </div>
+              );
+            }).filter(Boolean)}
+
+            {/* If all items have sufficient stock */}
+            {getRecipeDishes().every(dish => calculatePrepSuggestion(dish).kgToPrepare === 0) && (
+              <div className="text-center py-8 text-gray-500">
+                <CheckCircle size={48} className="mx-auto mb-2 text-green-500" />
+                <p className="text-lg">All items have sufficient stock!</p>
+                <p className="text-sm">Check back later or prep for tomorrow.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Prep Entry Form - Enhanced */}
+        <div className="bg-white border rounded-lg p-6 mb-6">
+          <h3 className="text-lg font-semibold mb-4">
+            🧑‍🍳 Add New Prep Entry {newPrepEntry.dishName && `- ${newPrepEntry.dishName}`}
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Dish Name *
+              </label>
+              <select
+                value={newPrepEntry.dishName}
+                onChange={(e) => {
+                  const dish = e.target.value;
+                  const config = portionConfig[dish] || portionConfig['default'];
+                  setNewPrepEntry({
+                    ...newPrepEntry,
+                    dishName: dish,
+                    portionSize: config.portionSize,
+                    containerSize: config.containerSize
+                  });
+                }}
+                className="w-full px-3 py-2 border rounded-lg"
+                required
+              >
+                <option value="">Select Dish</option>
+                {menuLoading ? (
+                  <option disabled>Loading menu...</option>
+                ) : (
+                  getRecipeDishes().map(dish => (
+                    <option key={dish} value={dish}>{dish}</option>
+                  ))
+                )}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Quantity (kg) *
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                value={newPrepEntry.quantityCooked}
+                onChange={(e) => setNewPrepEntry(prev => ({
+                  ...prev,
+                  quantityCooked: e.target.value
+                }))}
+                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                placeholder="5.0"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Container Size</label>
+              <input
+                type="text"
+                value={newPrepEntry.containerSize}
+                className="w-full p-2 border rounded bg-gray-100"
+                readOnly
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Portion Size (g)</label>
+              <input
+                type="number"
+                value={newPrepEntry.portionSize}
+                className="w-full p-2 border rounded bg-gray-100"
+                readOnly
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Chef Name</label>
+              <select
+                value={newPrepEntry.preparedBy}
+                onChange={(e) => setNewPrepEntry(prev => ({
+                  ...prev,
+                  preparedBy: e.target.value
+                }))}
+                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="Vasanth">Vasanth</option>
+                <option value="Swetha">Swetha</option>
+                <option value="Sravanthi">Sravanthi</option>
+                <option value="Asritha">Asritha</option>
+              </select>
+            </div>
+
+            <div className="flex items-end">
+              <button
+                onClick={handlePrepSubmit}
+                className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:ring-2 focus:ring-green-500"
+              >
+                <Plus size={16} className="inline mr-1" />
+                Add Prep
+              </button>
+            </div>
+          </div>
+
+          {/* Live Calculation Display - Enhanced */}
+          {newPrepEntry.quantityCooked && newPrepEntry.portionSize && (
+            <div className="mt-4 p-3 bg-green-50 rounded border border-green-200">
+              <div className="text-sm text-green-800">
+                <span className="font-medium">Total Portions: </span>
+                <span className="text-lg font-bold">
+                  {Math.floor((parseFloat(newPrepEntry.quantityCooked) * 1000) / newPrepEntry.portionSize)}
+                </span>
+                {newPrepEntry.dishName && (
+                  <span className="ml-4 text-green-600">
+                    Using {portionConfig[newPrepEntry.dishName]?.containerSize || '500ml'} containers
+                  </span>
                 )}
               </div>
+            </div>
+          )}
+        </div>
 
-              {/* Current Prep Log */}
-              <div className="bg-white border rounded-lg">
-                <div className="p-4 border-b">
-                  <h3 className="text-lg font-semibold">Today's Prep Log</h3>
-                  <p className="text-sm text-gray-600">Items prepared by chefs - ready for dispatch</p>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full">
-                  <thead className="bg-gray-50">
+        {/* Current Prep Log with Age Tracking */}
+        <div className="bg-white border rounded-lg">
+          <div className="p-4 border-b">
+            <h3 className="text-lg font-semibold">Today's Prep Log with Age Tracking</h3>
+            <p className="text-sm text-gray-600">Items show age for quality tracking</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+
+<thead className="bg-gray-50">
 <tr>
   <th className="px-4 py-2 text-left">Dish Name</th>
   <th className="px-4 py-2 text-left">Qty Cooked (kg)</th>
@@ -1820,645 +2572,674 @@ if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
     </>
   )}
   <th className="px-4 py-2 text-left">Status</th>
+  <th className="px-4 py-2 text-left">Actions</th>  {/* ADD THIS LINE */}
 </tr>
 </thead>
-                    <tbody className="divide-y">
-                      {prepLog.map(prep => (
-                        <tr key={prep.id} className={prep.processed ? 'bg-green-50' : 'bg-yellow-50'}>
-                          <td className="px-4 py-2 font-medium">{prep.dishName}</td>
-                          <td className="px-4 py-2">{prep.quantityCooked}kg</td>
-                          <td className="px-4 py-2">
-                            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                              {prep.containerSize}
+              <tbody className="divide-y">
+                {prepLog.map(prep => {
+                  // Calculate age
+                  const prepTime = new Date(prep.timestamp || `${prep.date}T09:00:00`);
+                  const now = new Date();
+                  const ageInHours = Math.floor((now - prepTime) / (1000 * 60 * 60));
+                  const ageInDays = Math.floor(ageInHours / 24);
+
+                  let ageDisplay, ageColor;
+                  if (ageInDays > 0) {
+                    ageDisplay = `${ageInDays} day${ageInDays > 1 ? 's' : ''} old`;
+                    ageColor = ageInDays >= 2 ? 'text-red-600' : 'text-orange-600';
+                  } else {
+                    ageDisplay = `${ageInHours} hour${ageInHours !== 1 ? 's' : ''} old`;
+                    ageColor = 'text-green-600';
+                  }
+
+                  return (
+                    <tr key={prep.id} className={
+                      prep.processed ? 'bg-green-50' :
+                      ageInDays >= 2 ? 'bg-red-50' :
+                      ageInDays >= 1 ? 'bg-yellow-50' :
+                      'bg-white'
+                    }>
+                      <td className="px-4 py-2 font-medium">{prep.dishName}</td>
+                      <td className="px-4 py-2">{prep.quantityCooked}kg</td>
+                      <td className="px-4 py-2">
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                          {prep.containerSize}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2">
+                        <span className="font-bold text-green-600">{prep.totalPortions}p</span>
+                      </td>
+                      <td className="px-4 py-2">{prep.preparedBy}</td>
+                      <td className="px-4 py-2">
+                        <div className="text-sm">
+                          {new Date(prep.timestamp || `${prep.date}T09:00:00`).toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2">
+                        <span className={`font-medium ${ageColor}`}>
+                          {ageDisplay}
+                        </span>
+                      </td>
+                      {currentPermissions.canSeeCosts && (
+                        <>
+                          <td className="px-4 py-2">£{calculateDishCost(prep.dishName).toFixed(2)}</td>
+                          <td className="px-4 py-2 font-medium">
+                            £{(calculateDishCost(prep.dishName) * prep.quantityCooked).toFixed(2)}
+                          </td>
+                        </>
+                      )}
+                      <td className="px-4 py-2">
+    {prep.processed ? (
+      <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">Dispatched</span>
+    ) : (
+      <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Ready for Dispatch</span>
+    )}
+  </td>
+  <td className="px-4 py-2">  {/* NEW DELETE BUTTON CELL */}
+    {!prep.processed && (
+      <button
+        onClick={() => handleDeletePrepItem(prep.id)}
+        className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+        title="Delete this prep entry"
+      >
+        <Trash2 size={14} className="inline mr-1" />
+        Delete
+      </button>
+    )}
+    {prep.processed && (
+      <span className="text-gray-400 text-sm">Dispatched</span>
+    )}
+  </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    )}
+
+
+
+    {activeTab === 'dispatch' && (
+      <div className="p-6">
+        <h2 className="text-2xl font-bold mb-6 flex items-center">
+          <Truck className="mr-2" /> Dispatch & Cold Room Management
+        </h2>
+
+        {/* Quick Tutorial */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <h3 className="text-lg font-semibold text-blue-800 mb-3">🎯 How Dispatch Works (3 Easy Steps)</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div className="bg-white p-3 rounded">
+              <div className="font-medium text-blue-700 mb-2">1️⃣ CLICK PREP ITEM</div>
+              <div className="text-gray-700">
+                👆 Click any green card below to auto-fill the dispatch form<br/>
+                ✅ Smart distribution suggestions included<br/>
+                ✅ All prep data filled automatically
+              </div>
+            </div>
+            <div className="bg-white p-3 rounded">
+              <div className="font-medium text-orange-700 mb-2">2️⃣ ADJUST PORTIONS</div>
+              <div className="text-gray-700">
+                📝 Modify Eastham/Bethnal Green portions as needed<br/>
+                🔄 Cold Room stock auto-calculates<br/>
+                ✅ Live total validation
+              </div>
+            </div>
+            <div className="bg-white p-3 rounded">
+              <div className="font-medium text-green-700 mb-2">3️⃣ DISPATCH</div>
+              <div className="text-gray-700">
+                🚀 Click "Dispatch & Create Sales"<br/>
+                ✅ Sales entries auto-created for both locations<br/>
+                ✅ Prep item marked as processed
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Select from Prep Log */}
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+          <h3 className="text-lg font-semibold text-green-800">📋 Ready for Dispatch (From Today's Prep)</h3>
+          <p className="text-sm text-green-700 mb-3">👆 Click any item below to auto-fill the dispatch form with smart distribution suggestions</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {prepLog.filter(prep => !prep.processed).length > 0 ?
+              prepLog.filter(prep => !prep.processed).map(prep => (
+                <div
+                  key={`prep-${prep.id}`}
+                  className="bg-white rounded-lg p-4 border-2 border-green-200 cursor-pointer hover:border-green-400 hover:shadow-md transform hover:scale-105 transition-all duration-200"
+                  onClick={() => selectPrepItem(prep)}
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-bold text-green-800">{prep.dishName}</span>
+                    <span className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
+                      {prep.totalPortions}p ready
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-600 mb-2">
+                    📊 {prep.quantityCooked}kg | {prep.containerSize} | by {prep.preparedBy}
+                  </div>
+                  <div className="text-xs text-blue-600 font-medium bg-blue-50 p-2 rounded text-center">
+                    👆 CLICK HERE to auto-fill dispatch form
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Will suggest: ~{Math.ceil(prep.totalPortions * 0.4)}p Eastham, ~{Math.ceil(prep.totalPortions * 0.35)}p Bethnal, ~{Math.floor(prep.totalPortions * 0.25)}p Cold Room
+                  </div>
+                </div>
+              ))
+              :
+              <div className="col-span-3">
+                <div className="text-center py-8">
+                  <ChefHat size={48} className="mx-auto mb-4 text-gray-400" />
+                  <p className="text-green-700 font-medium">No prep items ready for dispatch</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Go to <span className="font-medium">"Prep Log"</span> tab to add new cooked items first.
+                  </p>
+                </div>
+              </div>
+            }
+          </div>
+
+          {/* Summary */}
+          {prepLog.filter(prep => !prep.processed).length > 0 && (
+            <div className="mt-4 p-3 bg-white rounded border border-green-200">
+              <div className="text-sm text-green-800">
+                <strong>📊 Ready to Dispatch Summary:</strong>
+                <span className="ml-2">
+                  {prepLog.filter(prep => !prep.processed).length} items |
+                  {prepLog.filter(prep => !prep.processed).reduce((sum, prep) => sum + prep.totalPortions, 0)} total portions |
+                  £{prepLog.filter(prep => !prep.processed).reduce((sum, prep) => sum + (calculateDishCost(prep.dishName) * prep.quantityCooked), 0).toFixed(2)} total value
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Add New Dispatch Entry */}
+        <div className="dispatch-form bg-white border rounded-lg p-6 mb-6">
+          <h3 className="text-lg font-semibold mb-4">📦 Dispatch Form - Auto-filled from Prep Selection</h3>
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Dish Name *</label>
+              <input
+                type="text"
+                value={newDispatchEntry.dishName}
+                onChange={(e) => setNewDispatchEntry(prev => ({ ...prev, dishName: e.target.value }))}
+                className="w-full p-2 border rounded bg-gray-50"
+                placeholder="Click prep item above to auto-fill"
+                readOnly
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 whitespace-nowrap">
+                Total Available (portions) *
+              </label>
+              <input
+                type="number"
+                value={newDispatchEntry.totalCooked}
+                onChange={(e) => setNewDispatchEntry(prev => ({ ...prev, totalCooked: e.target.value }))}
+                className="w-full p-2 border rounded bg-gray-50"
+                placeholder="Auto-filled"
+                readOnly
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Eastham Sent</label>
+              <input
+                type="number"
+                value={newDispatchEntry.easthamSent}
+                onChange={(e) => {
+                  const eastham = parseInt(e.target.value) || 0;
+                  const bethnal = parseInt(newDispatchEntry.bethnalSent) || 0;
+                  const total = parseInt(newDispatchEntry.totalCooked) || 0;
+                  const coldRoom = Math.max(0, total - eastham - bethnal);
+                  setNewDispatchEntry(prev => ({
+                    ...prev,
+                    easthamSent: e.target.value,
+                    coldRoomStock: coldRoom.toString()
+                  }));
+                }}
+                className="w-full p-2 border-2 border-blue-300 rounded focus:border-blue-500"
+                placeholder="Adjust as needed"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Bethnal Green Sent</label>
+              <input
+                type="number"
+                value={newDispatchEntry.bethnalSent}
+                onChange={(e) => {
+                  const bethnal = parseInt(e.target.value) || 0;
+                  const eastham = parseInt(newDispatchEntry.easthamSent) || 0;
+                  const total = parseInt(newDispatchEntry.totalCooked) || 0;
+                  const coldRoom = Math.max(0, total - eastham - bethnal);
+                  setNewDispatchEntry(prev => ({
+                    ...prev,
+                    bethnalSent: e.target.value,
+                    coldRoomStock: coldRoom.toString()
+                  }));
+                }}
+                className="w-full p-2 border-2 border-green-300 rounded focus:border-green-500"
+                placeholder="Adjust as needed"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Cold Room Stock (auto)</label>
+              <input
+                type="number"
+                value={newDispatchEntry.coldRoomStock}
+                className="w-full p-2 border rounded bg-purple-50"
+                placeholder="Auto calculated"
+                readOnly
+              />
+              <div className="text-xs text-purple-600 mt-1">
+                Auto: Total - Eastham - Bethnal
+              </div>
+            </div>
+            <div className="flex items-end space-x-2">
+              <button
+                onClick={handleDispatchSubmit}
+                disabled={!newDispatchEntry.dishName || !newDispatchEntry.totalCooked}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                <Plus size={16} className="inline mr-1" />
+                Dispatch & Create Sales
+              </button>
+              <button
+                onClick={() => setNewDispatchEntry({
+                  dishName: '',
+                  totalCooked: '',
+                  easthamSent: '',
+                  bethnalSent: '',
+                  coldRoomStock: ''
+                })}
+                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                title="Clear form"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* Live Total Check */}
+          {newDispatchEntry.totalCooked && (newDispatchEntry.easthamSent || newDispatchEntry.bethnalSent || newDispatchEntry.coldRoomStock) && (
+            <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
+              <div className="text-sm">
+                <div className="flex justify-between items-center">
+                  <span>Distribution Check:</span>
+                  <span className={`font-bold ${
+                    (parseInt(newDispatchEntry.easthamSent) || 0) + (parseInt(newDispatchEntry.bethnalSent) || 0) + (parseInt(newDispatchEntry.coldRoomStock) || 0) === parseInt(newDispatchEntry.totalCooked)
+                    ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {(parseInt(newDispatchEntry.easthamSent) || 0) + (parseInt(newDispatchEntry.bethnalSent) || 0) + (parseInt(newDispatchEntry.coldRoomStock) || 0)} / {newDispatchEntry.totalCooked} portions
+                  </span>
+                </div>
+                {(parseInt(newDispatchEntry.easthamSent) || 0) + (parseInt(newDispatchEntry.bethnalSent) || 0) + (parseInt(newDispatchEntry.coldRoomStock) || 0) === parseInt(newDispatchEntry.totalCooked) ? (
+                  <div className="text-green-600 text-xs mt-1">✅ Perfect! Ready to dispatch</div>
+                ) : (
+                  <div className="text-red-600 text-xs mt-1">⚠️ Numbers don't add up - please adjust</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Dispatch Summary Table */}
+        <div className="bg-white border rounded-lg">
+          <div className="p-4 border-b">
+            <h3 className="text-lg font-semibold">Today's Dispatch Summary</h3>
+          </div>
+          <div className="overflow-x-auto">
+            {dispatch.length > 0 ? (
+              <table className="min-w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left">Dish Name</th>
+                    <th className="px-4 py-2 text-left">Total Cooked</th>
+                    <th className="px-4 py-2 text-left">Eastham Sent</th>
+                    <th className="px-4 py-2 text-left">Bethnal Green Sent</th>
+                    <th className="px-4 py-2 text-left">Cold Room Stock</th>
+                    <th className="px-4 py-2 text-left">Total Dispatched</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {dispatch.map(item => (
+                    <tr key={item.id}>
+                      <td className="px-4 py-2 font-medium">{item.dishName}</td>
+                      <td className="px-4 py-2">{item.totalCooked}p</td>
+                      <td className="px-4 py-2 text-blue-600">{item.easthamSent}p</td>
+                      <td className="px-4 py-2 text-green-600">{item.bethnalSent}p</td>
+                      <td className="px-4 py-2 text-purple-600">{item.coldRoomStock}p</td>
+                      <td className="px-4 py-2 font-medium">{item.easthamSent + item.bethnalSent}p</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="p-8 text-center">
+                <Truck size={48} className="mx-auto mb-4 text-gray-400" />
+                <h3 className="text-lg font-medium text-gray-600 mb-2">No Items Dispatched Today</h3>
+                <p className="text-gray-500">Dispatch entries will appear here when you send items to locations.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+
+
+      {activeTab === 'sales' && (
+        <div className="p-6">
+          <h2 className="text-2xl font-bold mb-6 flex items-center">
+            <DollarSign className="mr-2" /> Sales & Stock Management
+          </h2>
+
+          {/* Location Selector & Shop Status */}
+          <div className="mb-6 bg-white border rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <label className="font-medium">Location:</label>
+                <select
+                  value={selectedSalesLocation}
+                  onChange={(e) => setSelectedSalesLocation(e.target.value)}
+                  className="px-4 py-2 border rounded-lg text-lg font-medium"
+                >
+                  <option value="Eastham">📍 Eastham</option>
+                  <option value="Bethnal Green">📍 Bethnal Green</option>
+                </select>
+              </div>
+
+              {/* Shop Status & Controls */}
+              <div className="flex items-center space-x-4">
+                <div className={`px-4 py-2 rounded-lg font-medium ${
+                  shopStatuses[selectedSalesLocation] === 'open'
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  Status: {shopStatuses[selectedSalesLocation] === 'open' ? '🟢 OPEN' : '🔴 CLOSED'}
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (shopStatuses[selectedSalesLocation] === 'open') {
+                      // Closing shop
+                      if (window.confirm(`Close ${selectedSalesLocation} for the day? Remaining stock will become OLD STOCK.`)) {
+                        handleEndOfDay(selectedSalesLocation);
+                        const newStatuses = { ...shopStatuses };
+                        newStatuses[selectedSalesLocation] = 'closed';
+                        setShopStatuses(newStatuses);
+                        localStorage.setItem('shopStatuses', JSON.stringify(newStatuses));
+                      }
+                    } else {
+                      // Opening shop
+                      const newStatuses = { ...shopStatuses };
+                      const newOpenTimes = { ...shopOpenTimes };
+                      newStatuses[selectedSalesLocation] = 'open';
+                      newOpenTimes[selectedSalesLocation] = new Date().toISOString();
+                      setShopStatuses(newStatuses);
+                      setShopOpenTimes(newOpenTimes);
+                      localStorage.setItem('shopStatuses', JSON.stringify(newStatuses));
+                      localStorage.setItem('shopOpenTimes', JSON.stringify(newOpenTimes));
+                    }
+                  }}
+                  className={`px-6 py-2 rounded-lg text-white font-medium ${
+                    shopStatuses[selectedSalesLocation] === 'closed'
+                      ? 'bg-green-600 hover:bg-green-700'
+                      : 'bg-red-600 hover:bg-red-700'
+                  }`}
+                >
+                  {shopStatuses[selectedSalesLocation] === 'closed' ? '🔓 OPEN SHOP' : '🔒 CLOSE SHOP'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="bg-blue-50 p-4 rounded-lg text-center">
+              <div className="text-2xl font-bold text-blue-600">
+                {sales.filter(s => s.location === selectedSalesLocation && !s.endOfDay)
+                  .reduce((sum, s) => sum + (s.receivedPortions - s.remainingPortions), 0)}
+              </div>
+              <div className="text-sm text-gray-600">Sold Today</div>
+            </div>
+            <div className="bg-green-50 p-4 rounded-lg text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {sales.filter(s => s.location === selectedSalesLocation && !s.endOfDay)
+                  .reduce((sum, s) => sum + s.remainingPortions, 0)}
+              </div>
+              <div className="text-sm text-gray-600">Current Stock</div>
+            </div>
+            <div className="bg-orange-50 p-4 rounded-lg text-center">
+              <div className="text-2xl font-bold text-orange-600">
+                {sales.filter(s => s.location === selectedSalesLocation && s.endOfDay && s.finalStock > 0)
+                  .reduce((sum, s) => sum + s.finalStock, 0)}
+              </div>
+              <div className="text-sm text-gray-600">Old Stock</div>
+            </div>
+            <div className="bg-red-50 p-4 rounded-lg text-center">
+              <div className="text-2xl font-bold text-red-600">
+                {menuItems.filter(item => {
+                  const sale = sales.find(s =>
+                    s.dishName === item.dish_name &&
+                    s.location === selectedSalesLocation &&
+                    !s.endOfDay
+                  );
+                  const oldStock = sales.filter(s =>
+                    s.dishName === item.dish_name &&
+                    s.location === selectedSalesLocation &&
+                    s.endOfDay &&
+                    s.finalStock > 0
+                  ).reduce((sum, s) => sum + s.finalStock, 0);
+                  return (sale ? sale.remainingPortions : 0) + oldStock === 0;
+                }).length}
+              </div>
+              <div className="text-sm text-gray-600">Out of Stock</div>
+            </div>
+          </div>
+
+          {/* Search Box */}
+          <div className="mb-4">
+            <input
+              type="text"
+              placeholder="🔍 Search menu items..."
+              value={stockSearchTerm}
+              onChange={(e) => setStockSearchTerm(e.target.value)}
+              className="w-full px-4 py-2 border rounded-lg text-lg"
+            />
+          </div>
+
+          {/* Main Stock Table */}
+          <div className="bg-white border rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead className="bg-gray-800 text-white">
+                  <tr>
+                    <th className="px-4 py-3 text-left">Menu Item</th>
+                    <th className="px-4 py-3 text-center">Category</th>
+                    <th className="px-4 py-3 text-center">Old Stock</th>
+                    <th className="px-4 py-3 text-center">Received Today</th>
+                    <th className="px-4 py-3 text-center">Remaining</th>
+                    <th className="px-4 py-3 text-center">Sold Today</th>
+                    <th className="px-4 py-3 text-center">Total Available</th>
+                    <th className="px-4 py-3 text-center">Update Stock</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {menuItems
+                    .filter(item =>
+                      (item.location === selectedSalesLocation || item.location === 'Both') &&
+                      item.dish_name.toLowerCase().includes(stockSearchTerm.toLowerCase())
+                    )
+                    .map((menuItem, index) => {
+                      // Get current sales data
+                      const currentSale = sales.find(s =>
+                        s.dishName === menuItem.dish_name &&
+                        s.location === selectedSalesLocation &&
+                        !s.endOfDay
+                      );
+
+                      // Get old stock
+                      const oldStock = sales.filter(s =>
+                        s.dishName === menuItem.dish_name &&
+                        s.location === selectedSalesLocation &&
+                        s.endOfDay &&
+                        s.finalStock > 0
+                      ).reduce((sum, s) => sum + s.finalStock, 0);
+
+                      // Calculate values
+                      const dispatchedToday = currentSale ? currentSale.receivedPortions : 0;
+                      const remainingToday = currentSale ? currentSale.remainingPortions : 0;
+                      const soldToday = dispatchedToday - remainingToday;
+                      const totalAvailable = remainingToday + oldStock;
+
+                      // Determine row color
+                      let rowClass = '';
+                      if (totalAvailable === 0) rowClass = 'bg-red-50';
+                      else if (totalAvailable < 10) rowClass = 'bg-yellow-50';
+                      else if (oldStock > 0) rowClass = 'bg-orange-50';
+
+                      return (
+                        <tr key={index} className={rowClass}>
+                          <td className="px-4 py-3">
+                            <div className="font-medium">{menuItem.dish_name}</div>
+                            <div className="text-xs text-gray-500">
+                              {menuItem.price ? `£${menuItem.price}` : 'Price not set'}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className="px-2 py-1 bg-gray-100 rounded text-xs">
+                              {menuItem.category}
                             </span>
                           </td>
-                          <td className="px-4 py-2">{prep.portionSize}g</td>
-                          <td className="px-4 py-2">
-                            <span className="font-bold text-green-600">{prep.totalPortions}p</span>
-                          </td>
-                          <td className="px-4 py-2">{prep.preparedBy}</td>
-
-                          {currentPermissions.canSeeCosts && (
-                            <>
-                              <td className="px-4 py-2">£{calculateDishCost(prep.dishName).toFixed(2)}</td>
-                              <td className="px-4 py-2 font-medium">£{(calculateDishCost(prep.dishName) * prep.quantityCooked).toFixed(2)}</td>
-                            </>
-                          )}
-
-                          <td className="px-4 py-2">
-                            {prep.processed ? (
-                              <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">Dispatched</span>
+                          <td className="px-4 py-3 text-center">
+                            {oldStock > 0 ? (
+                              <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded text-sm font-medium">
+                                {oldStock}p 🚨
+                              </span>
                             ) : (
-                              <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Ready for Dispatch</span>
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center font-medium">
+                            {dispatchedToday > 0 ? (
+                              <span className="text-blue-600">{dispatchedToday}p</span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {editingSalesItem === currentSale?.id ? (
+                              <input
+                                type="number"
+                                value={newSalesEntry.remainingPortions}
+                                onChange={(e) => setNewSalesEntry(prev => ({
+                                  ...prev,
+                                  remainingPortions: e.target.value
+                                }))}
+                                className="w-20 px-2 py-1 border-2 border-blue-500 rounded text-center"
+                                autoFocus
+                                onKeyPress={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleUpdateSalesItem();
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <span className={`font-medium ${
+                                remainingToday === 0 ? 'text-green-600' : 'text-gray-700'
+                              }`}>
+                                {remainingToday}p
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {soldToday > 0 ? (
+                              <span className="text-green-600 font-bold">{soldToday}p</span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={`font-bold text-lg ${
+                              totalAvailable === 0 ? 'text-red-600' :
+                              totalAvailable < 10 ? 'text-yellow-600' :
+                              'text-green-600'
+                            }`}>
+                              {totalAvailable}p
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {currentSale && editingSalesItem !== currentSale.id ? (
+                              <button
+                                onClick={() => handleEditSalesItem(currentSale)}
+                                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                              >
+                                Update
+                              </button>
+                            ) : editingSalesItem === currentSale?.id ? (
+                              <div className="flex space-x-1 justify-center">
+                                <button
+                                  onClick={handleUpdateSalesItem}
+                                  className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                                >
+                                  ✓
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setEditingSalesItem(null);
+                                    setNewSalesEntry({
+                                      location: '',
+                                      dishName: '',
+                                      receivedPortions: '',
+                                      remainingPortions: ''
+                                    });
+                                  }}
+                                  className="px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600"
+                                >
+                                  ✗
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 text-sm">Not dispatched</span>
                             )}
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Legend */}
+          <div className="mt-4 p-3 bg-gray-100 rounded-lg">
+            <div className="flex flex-wrap gap-4 text-xs">
+              <div className="flex items-center">
+                <div className="w-4 h-4 bg-red-50 border rounded mr-2"></div>
+                <span>Out of Stock</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-4 h-4 bg-yellow-50 border rounded mr-2"></div>
+                <span>Low Stock (&lt;10)</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-4 h-4 bg-orange-50 border rounded mr-2"></div>
+                <span>Has Old Stock (sell first!)</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-4 h-4 bg-white border rounded mr-2"></div>
+                <span>Good Stock</span>
               </div>
             </div>
-          )}
-
-          {activeTab === 'dispatch' && (
-            <div className="p-6">
-              <h2 className="text-2xl font-bold mb-6 flex items-center">
-                <Truck className="mr-2" /> Dispatch & Cold Room Management
-              </h2>
-
-              {/* Quick Tutorial */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <h3 className="text-lg font-semibold text-blue-800 mb-3">🎯 How Dispatch Works (3 Easy Steps)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  <div className="bg-white p-3 rounded">
-                    <div className="font-medium text-blue-700 mb-2">1️⃣ CLICK PREP ITEM</div>
-                    <div className="text-gray-700">
-                      👆 Click any green card below to auto-fill the dispatch form<br/>
-                      ✅ Smart distribution suggestions included<br/>
-                      ✅ All prep data filled automatically
-                    </div>
-                  </div>
-                  <div className="bg-white p-3 rounded">
-                    <div className="font-medium text-orange-700 mb-2">2️⃣ ADJUST PORTIONS</div>
-                    <div className="text-gray-700">
-                      📝 Modify Eastham/Bethnal Green portions as needed<br/>
-                      🔄 Cold Room stock auto-calculates<br/>
-                      ✅ Live total validation
-                    </div>
-                  </div>
-                  <div className="bg-white p-3 rounded">
-                    <div className="font-medium text-green-700 mb-2">3️⃣ DISPATCH</div>
-                    <div className="text-gray-700">
-                      🚀 Click "Dispatch & Create Sales"<br/>
-                      ✅ Sales entries auto-created for both locations<br/>
-                      ✅ Prep item marked as processed
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Select from Prep Log */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                <h3 className="text-lg font-semibold text-green-800">📋 Ready for Dispatch (From Today's Prep)</h3>
-                <p className="text-sm text-green-700 mb-3">👆 Click any item below to auto-fill the dispatch form with smart distribution suggestions</p>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {prepLog.filter(prep => !prep.processed).length > 0 ?
-                    prepLog.filter(prep => !prep.processed).map(prep => (
-                      <div
-                        key={`prep-${prep.id}`}
-                        className="bg-white rounded-lg p-4 border-2 border-green-200 cursor-pointer hover:border-green-400 hover:shadow-md transform hover:scale-105 transition-all duration-200"
-                        onClick={() => selectPrepItem(prep)}
-                      >
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="font-bold text-green-800">{prep.dishName}</span>
-                          <span className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
-                            {prep.totalPortions}p ready
-                          </span>
-                        </div>
-                        <div className="text-xs text-gray-600 mb-2">
-                          📊 {prep.quantityCooked}kg | {prep.containerSize} | by {prep.preparedBy}
-                        </div>
-                        <div className="text-xs text-blue-600 font-medium bg-blue-50 p-2 rounded text-center">
-                          👆 CLICK HERE to auto-fill dispatch form
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Will suggest: ~{Math.ceil(prep.totalPortions * 0.4)}p Eastham, ~{Math.ceil(prep.totalPortions * 0.35)}p Bethnal, ~{Math.floor(prep.totalPortions * 0.25)}p Cold Room
-                        </div>
-                      </div>
-                    ))
-                    :
-                    <div className="col-span-3">
-                      <div className="text-center py-8">
-                        <ChefHat size={48} className="mx-auto mb-4 text-gray-400" />
-                        <p className="text-green-700 font-medium">No prep items ready for dispatch</p>
-                        <p className="text-sm text-gray-600 mt-1">
-                          Go to <span className="font-medium">"Prep Log"</span> tab to add new cooked items first.
-                        </p>
-                      </div>
-                    </div>
-                  }
-                </div>
-
-                {/* Summary */}
-                {prepLog.filter(prep => !prep.processed).length > 0 && (
-                  <div className="mt-4 p-3 bg-white rounded border border-green-200">
-                    <div className="text-sm text-green-800">
-                      <strong>📊 Ready to Dispatch Summary:</strong>
-                      <span className="ml-2">
-                        {prepLog.filter(prep => !prep.processed).length} items |
-                        {prepLog.filter(prep => !prep.processed).reduce((sum, prep) => sum + prep.totalPortions, 0)} total portions |
-                        £{prepLog.filter(prep => !prep.processed).reduce((sum, prep) => sum + (calculateDishCost(prep.dishName) * prep.quantityCooked), 0).toFixed(2)} total value
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Add New Dispatch Entry */}
-              <div className="dispatch-form bg-white border rounded-lg p-6 mb-6">
-                <h3 className="text-lg font-semibold mb-4">📦 Dispatch Form - Auto-filled from Prep Selection</h3>
-                <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Dish Name *</label>
-                    <input
-                      type="text"
-                      value={newDispatchEntry.dishName}
-                      onChange={(e) => setNewDispatchEntry(prev => ({ ...prev, dishName: e.target.value }))}
-                      className="w-full p-2 border rounded bg-gray-50"
-                      placeholder="Click prep item above to auto-fill"
-                      readOnly
-                    />
-                  </div>
-                  <div>
-  <label className="block text-sm font-medium mb-1 whitespace-nowrap">
-    Total Available (portions) *
-  </label>
-  <input
-    type="number"
-    value={newDispatchEntry.totalCooked}
-    onChange={(e) => setNewDispatchEntry(prev => ({ ...prev, totalCooked: e.target.value }))}
-    className="w-full p-2 border rounded bg-gray-50"
-    placeholder="Auto-filled"
-    readOnly
-  />
-</div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Eastham Sent</label>
-                    <input
-                      type="number"
-                      value={newDispatchEntry.easthamSent}
-                      onChange={(e) => {
-                        const eastham = parseInt(e.target.value) || 0;
-                        const bethnal = parseInt(newDispatchEntry.bethnalSent) || 0;
-                        const total = parseInt(newDispatchEntry.totalCooked) || 0;
-                        const coldRoom = Math.max(0, total - eastham - bethnal);
-                        setNewDispatchEntry(prev => ({
-                          ...prev,
-                          easthamSent: e.target.value,
-                          coldRoomStock: coldRoom.toString()
-                        }));
-                      }}
-                      className="w-full p-2 border-2 border-blue-300 rounded focus:border-blue-500"
-                      placeholder="Adjust as needed"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Bethnal Green Sent</label>
-                    <input
-                      type="number"
-                      value={newDispatchEntry.bethnalSent}
-                      onChange={(e) => {
-                        const bethnal = parseInt(e.target.value) || 0;
-                        const eastham = parseInt(newDispatchEntry.easthamSent) || 0;
-                        const total = parseInt(newDispatchEntry.totalCooked) || 0;
-                        const coldRoom = Math.max(0, total - eastham - bethnal);
-                        setNewDispatchEntry(prev => ({
-                          ...prev,
-                          bethnalSent: e.target.value,
-                          coldRoomStock: coldRoom.toString()
-                        }));
-                      }}
-                      className="w-full p-2 border-2 border-green-300 rounded focus:border-green-500"
-                      placeholder="Adjust as needed"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Cold Room Stock (auto)</label>
-                    <input
-                      type="number"
-                      value={newDispatchEntry.coldRoomStock}
-                      className="w-full p-2 border rounded bg-purple-50"
-                      placeholder="Auto calculated"
-                      readOnly
-                    />
-                    <div className="text-xs text-purple-600 mt-1">
-                      Auto: Total - Eastham - Bethnal
-                    </div>
-                  </div>
-                  <div className="flex items-end space-x-2">
-                    <button
-                      onClick={handleDispatchSubmit}
-                      disabled={!newDispatchEntry.dishName || !newDispatchEntry.totalCooked}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                    >
-                      <Plus size={16} className="inline mr-1" />
-                      Dispatch & Create Sales
-                    </button>
-                    <button
-                      onClick={() => setNewDispatchEntry({
-                        dishName: '',
-                        totalCooked: '',
-                        easthamSent: '',
-                        bethnalSent: '',
-                        coldRoomStock: ''
-                      })}
-                      className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-                      title="Clear form"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Live Total Check */}
-                {newDispatchEntry.totalCooked && (newDispatchEntry.easthamSent || newDispatchEntry.bethnalSent || newDispatchEntry.coldRoomStock) && (
-                  <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
-                    <div className="text-sm">
-                      <div className="flex justify-between items-center">
-                        <span>Distribution Check:</span>
-                        <span className={`font-bold ${
-                          (parseInt(newDispatchEntry.easthamSent) || 0) + (parseInt(newDispatchEntry.bethnalSent) || 0) + (parseInt(newDispatchEntry.coldRoomStock) || 0) === parseInt(newDispatchEntry.totalCooked)
-                          ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {(parseInt(newDispatchEntry.easthamSent) || 0) + (parseInt(newDispatchEntry.bethnalSent) || 0) + (parseInt(newDispatchEntry.coldRoomStock) || 0)} / {newDispatchEntry.totalCooked} portions
-                        </span>
-                      </div>
-                      {(parseInt(newDispatchEntry.easthamSent) || 0) + (parseInt(newDispatchEntry.bethnalSent) || 0) + (parseInt(newDispatchEntry.coldRoomStock) || 0) === parseInt(newDispatchEntry.totalCooked) ? (
-                        <div className="text-green-600 text-xs mt-1">✅ Perfect! Ready to dispatch</div>
-                      ) : (
-                        <div className="text-red-600 text-xs mt-1">⚠️ Numbers don't add up - please adjust</div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Dispatch Summary Table */}
-              <div className="bg-white border rounded-lg">
-                <div className="p-4 border-b">
-                  <h3 className="text-lg font-semibold">Today's Dispatch Summary</h3>
-                </div>
-                <div className="overflow-x-auto">
-                  {dispatch.length > 0 ? (
-                    <table className="min-w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-2 text-left">Dish Name</th>
-                          <th className="px-4 py-2 text-left">Total Cooked</th>
-                          <th className="px-4 py-2 text-left">Eastham Sent</th>
-                          <th className="px-4 py-2 text-left">Bethnal Green Sent</th>
-                          <th className="px-4 py-2 text-left">Cold Room Stock</th>
-                          <th className="px-4 py-2 text-left">Total Dispatched</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {dispatch.map(item => (
-                          <tr key={item.id}>
-                            <td className="px-4 py-2 font-medium">{item.dishName}</td>
-                            <td className="px-4 py-2">{item.totalCooked}p</td>
-                            <td className="px-4 py-2 text-blue-600">{item.easthamSent}p</td>
-                            <td className="px-4 py-2 text-green-600">{item.bethnalSent}p</td>
-                            <td className="px-4 py-2 text-purple-600">{item.coldRoomStock}p</td>
-                            <td className="px-4 py-2 font-medium">{item.easthamSent + item.bethnalSent}p</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <div className="p-8 text-center">
-                      <Truck size={48} className="mx-auto mb-4 text-gray-400" />
-                      <h3 className="text-lg font-medium text-gray-600 mb-2">No Items Dispatched Today</h3>
-                      <p className="text-gray-500">Dispatch entries will appear here when you send items to locations.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'sales' && (
-            <div className="p-6">
-              <h2 className="text-2xl font-bold mb-6 flex items-center">
-                <DollarSign className="mr-2" /> Sales Tracker - Live Updates Only
-              </h2>
-
-
-
-              {/* Location-specific Shop Controls */}
-
-                 {/* 🔴 ADD THIS ENTIRE BLOCK HERE */}
-                 {/* Location-specific Shop Controls */}
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                   {/* Eastham Shop Control */}
-                   <div className={`p-4 rounded-lg border ${
-                     shopStatuses['Eastham'] === 'open' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-                   }`}>
-                     <h3 className="font-semibold mb-2">📍 Eastham Location</h3>
-                     <div className="flex items-center justify-between">
-                       <div>
-                         <p className="text-sm">
-                           Status: {shopStatuses['Eastham'] === 'open' ? '🟢 Open' : '🔴 Closed'}
-                         </p>
-                         {shopStatuses['Eastham'] === 'open' && shopOpenTimes['Eastham'] && (
-   <>
-     <p className="text-xs text-gray-600">
-       Opened: {new Date(shopOpenTimes['Eastham']).toLocaleTimeString()}
-     </p>
-     <p className="text-sm font-medium text-gray-700">
-       Stock: {sales.filter(s => s.location === 'Eastham' && !s.endOfDay).reduce((sum, s) => sum + s.remainingPortions, 0)} portions
-     </p>
-   </>
- )}
-                       </div>
-                       <button
-                         onClick={() => {
-                           const newStatuses = { ...shopStatuses };
-                           const newOpenTimes = { ...shopOpenTimes };
-
-                           if (shopStatuses['Eastham'] === 'closed') {
-                             // Open shop
-                             newStatuses['Eastham'] = 'open';
-                             newOpenTimes['Eastham'] = new Date().toISOString();
-                           } else {
-                             // Close shop
-                             newStatuses['Eastham'] = 'closed';
-                             delete newOpenTimes['Eastham'];
-                           }
-
-                           setShopStatuses(newStatuses);
-                           setShopOpenTimes(newOpenTimes);
-                           localStorage.setItem('shopStatuses', JSON.stringify(newStatuses));
-                           localStorage.setItem('shopOpenTimes', JSON.stringify(newOpenTimes));
-                         }}
-                         className={`px-4 py-2 rounded-lg text-white font-medium transition ${
-                           shopStatuses['Eastham'] === 'closed'
-                             ? 'bg-green-600 hover:bg-green-700'
-                             : 'bg-red-600 hover:bg-red-700'
-                         }`}
-                       >
-                         {shopStatuses['Eastham'] === 'closed' ? '🔓 Open Shop' : '🔒 Close Shop'}
-                       </button>
-                     </div>
-                   </div>
-
-                   {/* Bethnal Green Shop Control */}
-                   <div className={`p-4 rounded-lg border ${
-                     shopStatuses['Bethnal Green'] === 'open' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-                   }`}>
-                     <h3 className="font-semibold mb-2">📍 Bethnal Green Location</h3>
-                     <div className="flex items-center justify-between">
-                       <div>
-                         <p className="text-sm">
-                           Status: {shopStatuses['Bethnal Green'] === 'open' ? '🟢 Open' : '🔴 Closed'}
-                         </p>
-
-
-
-                         {shopStatuses['Bethnal Green'] === 'open' && shopOpenTimes['Bethnal Green'] && (
-                           <>
-                             <p className="text-xs text-gray-600">
-                               Opened: {new Date(shopOpenTimes['Eastham']).toLocaleTimeString()}
-                             </p>
-                             <p className="text-sm font-medium text-gray-700">
-                               Stock: {sales.filter(s => s.location === 'Bethnal Green' && !s.endOfDay).reduce((sum, s) => sum + s.remainingPortions, 0)} portions
-                             </p>
-                           </>
-                         )}
-
-
-                       </div>
-                       <button
-                         onClick={() => {
-                           const newStatuses = { ...shopStatuses };
-                           const newOpenTimes = { ...shopOpenTimes };
-
-                           if (shopStatuses['Bethnal Green'] === 'closed') {
-                             // Open shop
-                             newStatuses['Bethnal Green'] = 'open';
-                             newOpenTimes['Bethnal Green'] = new Date().toISOString();
-                           } else {
-                             // Close shop
-                             newStatuses['Bethnal Green'] = 'closed';
-                             delete newOpenTimes['Bethnal Green'];
-                           }
-
-                           setShopStatuses(newStatuses);
-                           setShopOpenTimes(newOpenTimes);
-                           localStorage.setItem('shopStatuses', JSON.stringify(newStatuses));
-                           localStorage.setItem('shopOpenTimes', JSON.stringify(newOpenTimes));
-                         }}
-                         className={`px-4 py-2 rounded-lg text-white font-medium transition ${
-                           shopStatuses['Bethnal Green'] === 'closed'
-                             ? 'bg-green-600 hover:bg-green-700'
-                             : 'bg-red-600 hover:bg-red-700'
-                         }`}
-                       >
-                         {shopStatuses['Bethnal Green'] === 'closed' ? '🔓 Open Shop' : '🔒 Close Shop'}
-                       </button>
-                     </div>
-                   </div>
-                 </div>
-                 {/* 🔴 END OF NEW BLOCK */}
-
-
-              {/* Simplified Workflow */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <h3 className="text-lg font-semibold text-blue-800 mb-3">📋 SIMPLIFIED WORKFLOW</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  <div className="bg-white p-3 rounded">
-                    <div className="font-medium text-blue-700 mb-2">1️⃣ AUTO-CREATED</div>
-                    <div className="text-gray-700">
-                      ✅ Sales entries are AUTO-CREATED when you dispatch items<br/>
-                      ✅ No manual entry needed<br/>
-                      ✅ Each location gets their portions automatically
-                    </div>
-                  </div>
-                  <div className="bg-white p-3 rounded">
-                    <div className="font-medium text-orange-700 mb-2">2️⃣ UPDATE ONLY</div>
-                    <div className="text-gray-700">
-                      📝 Staff can only UPDATE remaining portions<br/>
-                      📝 Click EDIT button to update<br/>
-                      📝 System calculates sold portions automatically
-                    </div>
-                  </div>
-                  <div className="bg-white p-3 rounded">
-                    <div className="font-medium text-red-700 mb-2">3️⃣ CLOSE SHOP</div>
-                    <div className="text-gray-700">
-                      🔒 Click "Close Shop" when day ends<br/>
-                      🔒 Final stock becomes OLD STOCK<br/>
-                      🔒 Check "Old Stock Offers" for discounts
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Only show if there are sales entries to edit */}
-              {editingSalesItem && (
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-6">
-                  <h3 className="text-lg font-semibold mb-4 text-orange-800">✏️ Update Remaining Stock</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Location (Fixed)</label>
-                      <input
-                        type="text"
-                        value={newSalesEntry.location}
-                        className="w-full p-2 border rounded bg-gray-100"
-                        disabled
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Dish Name (Fixed)</label>
-                      <input
-                        type="text"
-                        value={newSalesEntry.dishName}
-                        className="w-full p-2 border rounded bg-gray-100"
-                        disabled
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Received (Fixed)</label>
-                      <input
-                        type="number"
-                        value={newSalesEntry.receivedPortions}
-                        className="w-full p-2 border rounded bg-gray-100"
-                        disabled
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Remaining Portions *</label>
-                      <input
-                        type="number"
-                        value={newSalesEntry.remainingPortions}
-                        onChange={(e) => setNewSalesEntry(prev => ({ ...prev, remainingPortions: e.target.value }))}
-                        className="w-full p-2 border-2 border-orange-300 rounded focus:border-orange-500"
-                        placeholder="Update remaining stock"
-                        autoFocus
-                      />
-                      <div className="text-xs text-green-600 mt-1">
-                        Will sell: {newSalesEntry.receivedPortions && newSalesEntry.remainingPortions ?
-                          Math.max(0, parseInt(newSalesEntry.receivedPortions) - parseInt(newSalesEntry.remainingPortions)) : 0} portions
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex space-x-2 mt-4">
-                    <button
-                      onClick={handleUpdateSalesItem}
-                      className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                    >
-                      <Save size={16} className="inline mr-1" />
-                      Update Stock
-                    </button>
-                    <button
-                      onClick={() => {
-                        setEditingSalesItem(null);
-                        setNewSalesEntry({
-                          location: '',
-                          dishName: '',
-                          receivedPortions: '',
-                          remainingPortions: ''
-                        });
-                      }}
-                      className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-
-
-              {/* Sales Status Table - ACTIVE ITEMS ONLY */}
-              <div className="bg-white border rounded-lg">
-                <div className="p-4 border-b">
-                  <h3 className="text-lg font-semibold">Today's Active Sales (Auto-Created from Dispatch)</h3>
-                  <p className="text-sm text-gray-600 mt-1">Only UPDATE remaining portions - no manual adding allowed</p>
-                </div>
-                <div className="overflow-x-auto">
-                  {sales.filter(s => !s.endOfDay).length > 0 ? (
-                    <table className="min-w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-2 text-left">Dish</th>
-                          <th className="px-4 py-2 text-left">Location</th>
-                          <th className="px-4 py-2 text-left">Received</th>
-                          <th className="px-4 py-2 text-left">Remaining</th>
-                          <th className="px-4 py-2 text-left">Sold</th>
-                          <th className="px-4 py-2 text-left">Sell Rate</th>
-                          <th className="px-4 py-2 text-left">Status</th>
-                          <th className="px-4 py-2 text-left">Last Updated</th>
-                          <th className="px-4 py-2 text-left">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {sales.filter(s => !s.endOfDay).map(sale => (
-                          <tr key={sale.id} className={
-                            sale.remainingPortions === 0 ? 'bg-green-50' :
-                            sale.remainingPortions > sale.receivedPortions * 0.5 ? 'bg-red-50' : 'bg-yellow-50'
-                          }>
-                            <td className="px-4 py-2 font-medium">
-                              {sale.dishName}
-                              {sale.autoCreated && <span className="ml-2 text-xs bg-blue-100 text-blue-600 px-1 rounded">Auto</span>}
-                            </td>
-                            <td className="px-4 py-2">
-                              <span className={`px-2 py-1 rounded text-xs ${
-                                sale.location === 'Eastham' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-                              }`}>
-                                {sale.location}
-                              </span>
-                            </td>
-                            <td className="px-4 py-2">{sale.receivedPortions}p</td>
-                            <td className="px-4 py-2">
-                              <span className={`font-medium ${
-                                sale.remainingPortions === 0 ? 'text-green-600' :
-                                sale.remainingPortions > sale.receivedPortions * 0.5 ? 'text-red-600' : 'text-orange-600'
-                              }`}>
-                                {sale.remainingPortions}p
-                              </span>
-                            </td>
-                            <td className="px-4 py-2 text-green-600 font-medium">
-                              {sale.receivedPortions - sale.remainingPortions}p
-                            </td>
-                            <td className="px-4 py-2">
-                              <span className={`px-2 py-1 rounded text-xs ${
-                                ((sale.receivedPortions - sale.remainingPortions) / sale.receivedPortions * 100) >= 90
-                                  ? 'bg-green-100 text-green-800'
-                                  : ((sale.receivedPortions - sale.remainingPortions) / sale.receivedPortions * 100) >= 70
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : 'bg-red-100 text-red-800'
-                              }`}>
-                                {((sale.receivedPortions - sale.remainingPortions) / sale.receivedPortions * 100).toFixed(0)}%
-                              </span>
-                            </td>
-                            <td className="px-4 py-2">
-                              {sale.remainingPortions === 0 ? (
-                                <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">✅ Sold Out</span>
-                              ) : sale.remainingPortions > sale.receivedPortions * 0.5 ? (
-                                <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs">🚨 Need Push</span>
-                              ) : (
-                                <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">🟡 Selling</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2 text-sm">
-                              <div>{sale.time}</div>
-                              <div className="text-gray-500 text-xs">{sale.updatedBy}</div>
-                            </td>
-                            <td className="px-4 py-2">
-                              <button
-                                onClick={() => handleEditSalesItem(sale)}
-                                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-                                title="Update remaining stock"
-                              >
-                                📝 Update
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <div className="p-8 text-center">
-                      <ShoppingCart size={48} className="mx-auto mb-4 text-gray-400" />
-                      <h3 className="text-lg font-medium text-gray-600 mb-2">No Active Sales Today</h3>
-                      <p className="text-gray-500">Sales entries will appear automatically when you dispatch items from the Dispatch tab.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+          </div>
+        </div>
+      )}
 
           {activeTab === 'old-stock' && <OldStockManager />}
 
@@ -2825,6 +3606,9 @@ if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
               </div>
             </div>
           )}
+
+
+          {activeTab === 'users' && currentPermissions.tabs.includes('users') && <UserManagement />}
 
           {activeTab === 'procurement' && (
             <div className="p-6">

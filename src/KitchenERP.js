@@ -49,56 +49,6 @@ const KitchenERP = () => {
   };
 
 
-  // Complete inventory with all items including new ingredients from recipes
-  const [inventory, setInventory] = useState(() => loadFromStorage('inventory', [
-    // Pacific Seafood Items
-    { id: 1, name: 'Baby Aubergine', unit: 'box', openingStock: 3, receivedThisWeek: 1, reorderLevel: 1, unitCost: 16.99, supplier: 'Pacific Seafood', category: 'Vegetables' },
-    { id: 2, name: 'Coriander Fresh', unit: 'bunch', openingStock: 50, receivedThisWeek: 20, reorderLevel: 10, unitCost: 0.99, supplier: 'Pacific Seafood', category: 'Vegetables' },
-    { id: 3, name: 'Ginger Fresh', unit: 'kg', openingStock: 25, receivedThisWeek: 10, reorderLevel: 3, unitCost: 3.85, supplier: 'Pacific Seafood', category: 'Vegetables' },
-    { id: 4, name: 'Mint Fresh', unit: 'bunch', openingStock: 40, receivedThisWeek: 20, reorderLevel: 8, unitCost: 0.89, supplier: 'Pacific Seafood', category: 'Vegetables' },
-    { id: 5, name: 'Garlic Whole Fresh', unit: 'kg', openingStock: 15, receivedThisWeek: 8, reorderLevel: 3, unitCost: 5.99, supplier: 'Pacific Seafood', category: 'Vegetables' },
-    { id: 6, name: 'Cashew Broken Heera', unit: 'kg', openingStock: 8, receivedThisWeek: 12, reorderLevel: 2, unitCost: 5.99, supplier: 'Pacific Seafood', category: 'Dry Items' },
-    { id: 7, name: 'Garam Masala Natco', unit: 'kg', openingStock: 5, receivedThisWeek: 3, reorderLevel: 1, unitCost: 8.99, supplier: 'Pacific Seafood', category: 'Spices' },
-    { id: 8, name: 'Ghee Butter Heera', unit: 'kg', openingStock: 10, receivedThisWeek: 8, reorderLevel: 2, unitCost: 10.50, supplier: 'Pacific Seafood', category: 'Dry Items' },
-    { id: 9, name: 'Basmati Rice Green Daawat', unit: 'kg', openingStock: 60, receivedThisWeek: 80, reorderLevel: 20, unitCost: 1.75, supplier: 'Pacific Seafood', category: 'Dry Items' },
-    { id: 10, name: 'Turmeric Powder Natco', unit: 'kg', openingStock: 3, receivedThisWeek: 1, reorderLevel: 0.5, unitCost: 5.99, supplier: 'Pacific Seafood', category: 'Spices' },
-
-    // Booker Items
-    { id: 11, name: 'Natural Yogurt', unit: 'kg', openingStock: 15, receivedThisWeek: 20, reorderLevel: 5, unitCost: 1.10, supplier: 'Booker', category: 'Dairy' },
-    { id: 12, name: 'Vegetable Oil Rapeseed', unit: 'litre', openingStock: 35, receivedThisWeek: 40, reorderLevel: 10, unitCost: 3.25, supplier: 'Booker', category: 'Dry Items' },
-    { id: 13, name: 'Salt', unit: 'kg', openingStock: 10, receivedThisWeek: 12, reorderLevel: 3, unitCost: 1.25, supplier: 'Booker', category: 'Dry Items' },
-    { id: 14, name: 'Cooking Onion', unit: 'kg', openingStock: 20, receivedThisWeek: 10, reorderLevel: 5, unitCost: 0.80, supplier: 'Booker', category: 'Vegetables' },
-    { id: 15, name: 'Salad Tomatoes', unit: 'kg', openingStock: 10, receivedThisWeek: 6, reorderLevel: 3, unitCost: 1.33, supplier: 'Booker', category: 'Vegetables' },
-
-    // Meat Items
-    { id: 16, name: 'Chicken Thigh', unit: 'kg', openingStock: 25, receivedThisWeek: 20, reorderLevel: 8, unitCost: 5.80, supplier: 'Local Butcher', category: 'Meat' },
-    { id: 17, name: 'Boneless Chicken', unit: 'kg', openingStock: 30, receivedThisWeek: 25, reorderLevel: 10, unitCost: 7.50, supplier: 'Local Butcher', category: 'Meat' },
-    { id: 18, name: 'Lamb Boneless', unit: 'kg', openingStock: 8, receivedThisWeek: 5, reorderLevel: 2, unitCost: 11.00, supplier: 'Local Butcher', category: 'Meat' },
-    { id: 19, name: 'Lamb Meat', unit: 'kg', openingStock: 15, receivedThisWeek: 10, reorderLevel: 5, unitCost: 14.50, supplier: 'Local Butcher', category: 'Meat' },
-    { id: 20, name: 'Raw Prawns', unit: 'kg', openingStock: 8, receivedThisWeek: 5, reorderLevel: 2, unitCost: 16.50, supplier: 'Fish Market', category: 'Seafood' },
-
-    // Additional items from new recipes
-    { id: 21, name: 'Peanuts', unit: 'kg', openingStock: 15, receivedThisWeek: 5, reorderLevel: 3, unitCost: 4.50, supplier: 'Indian Grocers', category: 'Dry Items' },
-    { id: 22, name: 'Coconut Dry', unit: 'kg', openingStock: 8, receivedThisWeek: 3, reorderLevel: 2, unitCost: 6.80, supplier: 'Indian Grocers', category: 'Dry Items' },
-    { id: 23, name: 'Fried Onions', unit: 'kg', openingStock: 5, receivedThisWeek: 2, reorderLevel: 1, unitCost: 12.50, supplier: 'Indian Grocers', category: 'Dry Items' },
-    { id: 24, name: 'Sesame Seeds', unit: 'kg', openingStock: 3, receivedThisWeek: 1, reorderLevel: 0.5, unitCost: 8.20, supplier: 'Indian Grocers', category: 'Spices' },
-    { id: 25, name: 'Chilli Powder', unit: 'kg', openingStock: 4, receivedThisWeek: 2, reorderLevel: 1, unitCost: 9.50, supplier: 'Indian Grocers', category: 'Spices' },
-    { id: 26, name: 'Coriander Powder', unit: 'kg', openingStock: 3, receivedThisWeek: 2, reorderLevel: 1, unitCost: 7.25, supplier: 'Indian Grocers', category: 'Spices' },
-    { id: 27, name: 'Tomato Puree', unit: 'kg', openingStock: 12, receivedThisWeek: 8, reorderLevel: 3, unitCost: 3.80, supplier: 'Booker', category: 'Vegetables' },
-    { id: 28, name: 'Black Pepper', unit: 'kg', openingStock: 2, receivedThisWeek: 1, reorderLevel: 0.5, unitCost: 35.00, supplier: 'Indian Grocers', category: 'Spices' },
-    { id: 29, name: 'Green Cardamom', unit: 'kg', openingStock: 0.8, receivedThisWeek: 0.3, reorderLevel: 0.2, unitCost: 85.00, supplier: 'Indian Grocers', category: 'Spices' },
-    { id: 30, name: 'Green Chillies', unit: 'kg', openingStock: 5, receivedThisWeek: 3, reorderLevel: 1, unitCost: 4.50, supplier: 'Indian Grocers', category: 'Vegetables' },
-    { id: 31, name: 'Chitti Muthayalu Rice', unit: 'kg', openingStock: 25, receivedThisWeek: 15, reorderLevel: 8, unitCost: 3.20, supplier: 'Indian Grocers', category: 'Dry Items' },
-    { id: 32, name: 'Ginger-Garlic Paste', unit: 'kg', openingStock: 8, receivedThisWeek: 4, reorderLevel: 2, unitCost: 5.50, supplier: 'Indian Grocers', category: 'Spices' },
-    { id: 33, name: 'Cashew Nuts', unit: 'kg', openingStock: 3, receivedThisWeek: 2, reorderLevel: 1, unitCost: 18.50, supplier: 'Indian Grocers', category: 'Dry Items' },
-    { id: 34, name: 'Kasoori Methi', unit: 'kg', openingStock: 0.5, receivedThisWeek: 0.2, reorderLevel: 0.1, unitCost: 22.00, supplier: 'Indian Grocers', category: 'Spices' },
-    { id: 35, name: 'Eggs', unit: 'pieces', openingStock: 60, receivedThisWeek: 30, reorderLevel: 20, unitCost: 0.35, supplier: 'Local Supplier', category: 'Dairy' },
-    { id: 36, name: 'Lemon Juice', unit: 'litre', openingStock: 3, receivedThisWeek: 2, reorderLevel: 1, unitCost: 4.80, supplier: 'Booker', category: 'Miscellaneous' },
-    { id: 37, name: 'Gram Flour KTC', unit: 'kg', openingStock: 4, receivedThisWeek: 2, reorderLevel: 1, unitCost: 2.00, supplier: 'Pacific Seafood', category: 'Dry Items' },
-    { id: 38, name: 'Rice Flour', unit: 'kg', openingStock: 5, receivedThisWeek: 3, reorderLevel: 2, unitCost: 2.80, supplier: 'Indian Grocers', category: 'Dry Items' },
-    { id: 39, name: 'All Purpose Flour', unit: 'kg', openingStock: 10, receivedThisWeek: 5, reorderLevel: 3, unitCost: 1.90, supplier: 'Booker', category: 'Dry Items' },
-    { id: 40, name: 'Curry Leaves', unit: 'bunch', openingStock: 20, receivedThisWeek: 10, reorderLevel: 5, unitCost: 1.50, supplier: 'Indian Grocers', category: 'Vegetables' }
-  ]));
 
   // Complete recipes from PDF
   const [recipes, setRecipes] = useState(() => loadFromStorage('recipes', [
@@ -221,9 +171,185 @@ useEffect(() => {
 }, []);
 
   // Auto-save to localStorage whenever state changes
+
+  // Around line 52-63 - KEEP THESE (DO NOT DELETE):
+  const [showAddInventoryItem, setShowAddInventoryItem] = useState(false);
+  const [editingInventoryItem, setEditingInventoryItem] = useState(null);
+
+  const [newInventoryItem, setNewInventoryItem] = useState({
+    name: '',
+    unit: 'kg',
+    openingStock: '',
+    receivedThisWeek: '',
+    reorderLevel: '',
+    unitCost: '',
+    supplier: 'Local Supplier',
+    category: 'Dry Items'
+  });
+
+  const [inventory, setInventory] = useState([]);
+
+
+  // 2. ADD this useEffect to load inventory from database (add after your other useEffects):
   useEffect(() => {
-    localStorage.setItem('inventory', JSON.stringify(inventory));
-  }, [inventory]);
+    const loadInventoryFromDatabase = async () => {
+      try {
+        console.log('Loading inventory from Supabase...');
+        const { data, error } = await supabase
+          .from('inventory')
+          .select('*')
+          .order('name');
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          // Convert snake_case from DB to camelCase for app
+          const formattedInventory = data.map(item => ({
+            id: item.id,
+            name: item.name,
+            unit: item.unit,
+            openingStock: parseFloat(item.opening_stock || 0),
+            receivedThisWeek: parseFloat(item.received_this_week || 0),
+            reorderLevel: parseFloat(item.reorder_level || 1),
+            unitCost: parseFloat(item.unit_cost || 0),
+            supplier: item.supplier || 'Local Supplier',
+            category: item.category || 'Dry Items'
+          }));
+
+          setInventory(formattedInventory);
+          console.log('Inventory loaded:', formattedInventory.length, 'items');
+        } else {
+          console.log('No inventory data in database');
+        }
+      } catch (error) {
+        console.error('Error loading inventory:', error);
+        // Fall back to localStorage if database fails
+        const stored = localStorage.getItem('inventory');
+        if (stored) {
+          setInventory(JSON.parse(stored));
+          console.log('Loaded inventory from localStorage as fallback');
+        }
+      }
+    };
+
+    loadInventoryFromDatabase();
+  }, []); // Empty array = runs once on mount
+
+  // 3. Also load other data from database - ADD/UPDATE this existing useEffect:
+  useEffect(() => {
+    const loadAllDataFromDatabase = async () => {
+      console.log('Loading all data from Supabase...');
+
+      // Load prep log
+      try {
+        const { data: prepData } = await supabase
+          .from('prep_log')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (prepData) {
+          const formattedPrep = prepData.map(item => ({
+            id: item.id,
+            date: item.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+            timestamp: item.timestamp || item.created_at,
+            prepTime: item.prep_time,
+            dishName: item.dish_name,
+            quantityCooked: parseFloat(item.quantity_cooked),
+            preparedBy: item.prepared_by,
+            portionSize: item.portion_size,
+            containerSize: item.container_size,
+            totalPortions: item.total_portions,
+            processed: item.processed || false,
+            status: item.status || 'fresh'
+          }));
+          setPrepLog(formattedPrep);
+          console.log('Prep log loaded:', formattedPrep.length, 'items');
+        }
+      } catch (error) {
+        console.error('Error loading prep log:', error);
+      }
+
+      // Load dispatch
+      try {
+        const { data: dispatchData } = await supabase
+          .from('dispatch')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (dispatchData) {
+          const formattedDispatch = dispatchData.map(item => ({
+            id: item.id,
+            date: item.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+            dishName: item.dish_name,
+            totalCooked: item.total_cooked,
+            easthamSent: item.eastham_sent,
+            bethnalSent: item.bethnal_sent,
+            coldRoomStock: item.cold_room_stock
+          }));
+          setDispatch(formattedDispatch);
+          console.log('Dispatch loaded:', formattedDispatch.length, 'items');
+        }
+      } catch (error) {
+        console.error('Error loading dispatch:', error);
+      }
+
+      // Load sales
+      try {
+        const { data: salesData } = await supabase
+          .from('sales')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (salesData) {
+          const formattedSales = salesData.map(item => ({
+            id: item.id,
+            dishName: item.dish_name,
+            location: item.location,
+            receivedPortions: item.received_portions,
+            remainingPortions: item.remaining_portions,
+            date: item.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+            time: new Date(item.created_at).toLocaleTimeString(),
+            updatedBy: item.updated_by,
+            autoCreated: item.auto_created || false,
+            endOfDay: item.end_of_day || false,
+            finalStock: item.final_stock || 0
+          }));
+          setSales(formattedSales);
+          console.log('Sales loaded:', formattedSales.length, 'items');
+        }
+      } catch (error) {
+        console.error('Error loading sales:', error);
+      }
+
+      // Load waste log
+      try {
+        const { data: wasteData } = await supabase
+          .from('waste_log')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (wasteData) {
+          const formattedWaste = wasteData.map(item => ({
+            id: item.id,
+            date: item.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+            time: new Date(item.created_at).toLocaleTimeString(),
+            dishName: item.dish_name,
+            location: item.location,
+            portions: item.portions,
+            reason: item.reason,
+            notes: item.notes,
+            value: item.value
+          }));
+          setWasteLog(formattedWaste);
+          console.log('Waste log loaded:', formattedWaste.length, 'items');
+        }
+      } catch (error) {
+        console.error('Error loading waste log:', error);
+      }
+    };
+
+    loadAllDataFromDatabase();
+  }, []); // Run once on mount
 
   useEffect(() => {
     localStorage.setItem('recipes', JSON.stringify(recipes));
@@ -455,7 +581,12 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
     };
   };
 
-
+  useEffect(() => {
+    const loadInventoryFromDatabase = async () => {
+      // Load from Supabase
+    };
+    loadInventoryFromDatabase();
+  }, []);
 
 
 
@@ -1597,6 +1728,187 @@ const UserManagement = () => {
     );
   };
 
+
+
+  // ============================================
+// ADD ALL THESE HANDLER FUNCTIONS (around line 1500)
+// ============================================
+
+// Handler to add new inventory item
+const handleAddInventoryItem = async () => {
+  if (newInventoryItem.name && newInventoryItem.openingStock && newInventoryItem.unitCost) {
+    try {
+      // Prepare data for database (snake_case)
+      const dbItem = {
+        name: newInventoryItem.name,
+        unit: newInventoryItem.unit,
+        opening_stock: parseFloat(newInventoryItem.openingStock),
+        received_this_week: parseFloat(newInventoryItem.receivedThisWeek) || 0,
+        reorder_level: parseFloat(newInventoryItem.reorderLevel) || 1,
+        unit_cost: parseFloat(newInventoryItem.unitCost),
+        supplier: newInventoryItem.supplier,
+        category: newInventoryItem.category
+      };
+
+      // Insert into database and get the new record back
+      const { data, error } = await supabase
+        .from('inventory')
+        .insert([dbItem])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Add to local state (convert to camelCase)
+      const newItem = {
+        id: data.id,
+        name: data.name,
+        unit: data.unit,
+        openingStock: parseFloat(data.opening_stock),
+        receivedThisWeek: parseFloat(data.received_this_week),
+        reorderLevel: parseFloat(data.reorder_level),
+        unitCost: parseFloat(data.unit_cost),
+        supplier: data.supplier,
+        category: data.category
+      };
+
+      setInventory(prev => [...prev, newItem]);
+
+      // Reset form
+      setNewInventoryItem({
+        name: '',
+        unit: 'kg',
+        openingStock: '',
+        receivedThisWeek: '',
+        reorderLevel: '',
+        unitCost: '',
+        supplier: 'Local Supplier',
+        category: 'Dry Items'
+      });
+      setShowAddInventoryItem(false);
+
+      alert(`✅ Successfully added ${newItem.name} to inventory!`);
+    } catch (error) {
+      console.error('Error adding inventory item:', error);
+      alert('❌ Error adding item to database');
+    }
+  } else {
+    alert('❌ Please fill in all required fields');
+  }
+};
+
+// Handler to start editing an inventory item
+const handleEditInventoryItem = (item) => {
+  setEditingInventoryItem(item.id);
+  setNewInventoryItem({
+    name: item.name,
+    unit: item.unit,
+    openingStock: item.openingStock.toString(),
+    receivedThisWeek: item.receivedThisWeek.toString(),
+    reorderLevel: item.reorderLevel.toString(),
+    unitCost: item.unitCost.toString(),
+    supplier: item.supplier,
+    category: item.category
+  });
+};
+
+// Handler to update an existing inventory item
+const handleUpdateInventoryItem = async () => {
+  if (newInventoryItem.name && newInventoryItem.openingStock && newInventoryItem.unitCost) {
+    try {
+      // Prepare data for database (snake_case)
+      const dbItem = {
+        name: newInventoryItem.name,
+        unit: newInventoryItem.unit,
+        opening_stock: parseFloat(newInventoryItem.openingStock),
+        received_this_week: parseFloat(newInventoryItem.receivedThisWeek) || 0,
+        reorder_level: parseFloat(newInventoryItem.reorderLevel) || 1,
+        unit_cost: parseFloat(newInventoryItem.unitCost),
+        supplier: newInventoryItem.supplier,
+        category: newInventoryItem.category,
+        updated_at: new Date().toISOString()
+      };
+
+      // Update in database
+      const { error } = await supabase
+        .from('inventory')
+        .update(dbItem)
+        .eq('id', editingInventoryItem);
+
+      if (error) throw error;
+
+      // Update local state (camelCase)
+      setInventory(prev => prev.map(item =>
+        item.id === editingInventoryItem
+          ? {
+              ...item,
+              name: newInventoryItem.name,
+              unit: newInventoryItem.unit,
+              openingStock: parseFloat(newInventoryItem.openingStock),
+              receivedThisWeek: parseFloat(newInventoryItem.receivedThisWeek) || 0,
+              reorderLevel: parseFloat(newInventoryItem.reorderLevel) || 1,
+              unitCost: parseFloat(newInventoryItem.unitCost),
+              supplier: newInventoryItem.supplier,
+              category: newInventoryItem.category
+            }
+          : item
+      ));
+
+      // Reset form
+      setEditingInventoryItem(null);
+      setNewInventoryItem({
+        name: '',
+        unit: 'kg',
+        openingStock: '',
+        receivedThisWeek: '',
+        reorderLevel: '',
+        unitCost: '',
+        supplier: 'Local Supplier',
+        category: 'Dry Items'
+      });
+
+      alert('✅ Inventory item updated successfully!');
+    } catch (error) {
+      console.error('Error updating inventory item:', error);
+      alert('❌ Error updating item in database');
+    }
+  } else {
+    alert('❌ Please fill in all required fields');
+  }
+};
+
+// Handler to delete an inventory item
+const handleDeleteInventoryItem = async (itemId, itemName) => {
+  // Check if item is used in any recipes
+  const isUsedInRecipes = recipes.some(r => r.ingredient === itemName);
+
+  if (isUsedInRecipes) {
+    alert(`❌ Cannot delete "${itemName}" - it's used in recipes!`);
+    return;
+  }
+
+  if (window.confirm(`Are you sure you want to delete "${itemName}" from inventory?`)) {
+    try {
+      // Delete from database
+      const { error } = await supabase
+        .from('inventory')
+        .delete()
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      // Delete from local state
+      setInventory(prev => prev.filter(item => item.id !== itemId));
+      alert(`✅ "${itemName}" deleted from inventory`);
+    } catch (error) {
+      console.error('Error deleting inventory item:', error);
+      alert('❌ Error deleting item from database');
+    }
+  }
+};
+
+
+
   // Old Stock Manager Component - FIXED
   const OldStockManager = () => {
     const oldStockItems = sales.filter(s => s.endOfDay && s.finalStock > 0);
@@ -2197,7 +2509,7 @@ const UserManagement = () => {
     <div className="flex items-center justify-between">
       <div className="flex items-center space-x-4">
         <ChefHat className="text-blue-600" size={32} />
-        <h1 className="text-xl font-bold text-gray-900">WHEELFEST KITCHEN MANAGEMENT</h1>
+        <h1 className="text-xl font-bold text-gray-900">WHEELFEAST KITCHEN MANAGEMENT</h1>
         <div className="flex space-x-2">
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
             shopStatuses['Eastham'] === 'open' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
@@ -2950,63 +3262,289 @@ const UserManagement = () => {
       />
     )}
 
-          {activeTab === 'inventory' && (
-            <div className="p-6">
-              <h2 className="text-2xl font-bold mb-6 flex items-center">
-                <Package className="mr-2" /> Inventory Tracker
-              </h2>
+    {activeTab === 'inventory' && (
+      <div className="p-6">
+        <h2 className="text-2xl font-bold mb-6 flex items-center">
+          <Package className="mr-2" /> Inventory Tracker
+        </h2>
 
-              <div className="overflow-x-auto">
-                <table className="min-w-full bg-white border rounded-lg">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left">Item</th>
-                      <th className="px-4 py-2 text-left">Category</th>
-                      <th className="px-4 py-2 text-left">Unit</th>
-                      <th className="px-4 py-2 text-left">Opening</th>
-                      <th className="px-4 py-2 text-left">Received</th>
-                      <th className="px-4 py-2 text-left">Used</th>
-                      <th className="px-4 py-2 text-left">Closing</th>
-                      <th className="px-4 py-2 text-left">Reorder</th>
-                      <th className="px-4 py-2 text-left">Cost/Unit</th>
-                      <th className="px-4 py-2 text-left">Value</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {getInventoryMetrics().map(item => (
-                      <tr key={item.id} className={item.closingBalance <= item.reorderLevel ? 'bg-red-50' : ''}>
-                        <td className="px-4 py-2 font-medium">{item.name}</td>
-                        <td className="px-4 py-2">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            item.category === 'Meat' ? 'bg-red-100 text-red-800' :
-                            item.category === 'Vegetables' ? 'bg-green-100 text-green-800' :
-                            item.category === 'Spices' ? 'bg-orange-100 text-orange-800' :
-                            item.category === 'Seafood' ? 'bg-cyan-100 text-cyan-800' :
-                            item.category === 'Dairy' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {item.category}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2">{item.unit}</td>
-                        <td className="px-4 py-2">{item.openingStock}</td>
-                        <td className="px-4 py-2">{item.receivedThisWeek}</td>
-                        <td className="px-4 py-2">{item.usedThisWeek.toFixed(2)}</td>
-                        <td className="px-4 py-2">
-                          <span className={item.closingBalance <= item.reorderLevel ? 'text-red-600 font-bold' : ''}>
-                            {item.closingBalance.toFixed(2)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2">{item.reorderLevel}</td>
-                        <td className="px-4 py-2">£{item.unitCost.toFixed(2)}</td>
-                        <td className="px-4 py-2">£{item.stockValue.toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+        {/* Add Item Button */}
+        <div className="mb-4">
+          <button
+            onClick={() => {
+              setShowAddInventoryItem(!showAddInventoryItem);
+              setEditingInventoryItem(null);
+              setNewInventoryItem({
+                name: '',
+                unit: 'kg',
+                openingStock: '',
+                receivedThisWeek: '',
+                reorderLevel: '',
+                unitCost: '',
+                supplier: 'Local Supplier',
+                category: 'Dry Items'
+              });
+            }}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center"
+          >
+            <Plus className="mr-2" size={20} />
+            Add New Item
+          </button>
+        </div>
+
+        {/* Add/Edit Item Form */}
+        {(showAddInventoryItem || editingInventoryItem) && (
+          <div className="bg-white border-2 border-green-500 rounded-lg p-6 mb-6">
+            <h3 className="text-lg font-semibold mb-4 text-green-700">
+              {editingInventoryItem ? 'Edit Inventory Item' : 'Add New Inventory Item'}
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Item Name *</label>
+                <input
+                  type="text"
+                  value={newInventoryItem.name}
+                  onChange={(e) => setNewInventoryItem(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full p-2 border rounded-lg"
+                  placeholder="e.g. Chicken Thigh"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Category *</label>
+                <select
+                  value={newInventoryItem.category}
+                  onChange={(e) => setNewInventoryItem(prev => ({ ...prev, category: e.target.value }))}
+                  className="w-full p-2 border rounded-lg"
+                >
+                  <option value="Meat">Meat</option>
+                  <option value="Seafood">Seafood</option>
+                  <option value="Vegetables">Vegetables</option>
+                  <option value="Dairy">Dairy</option>
+                  <option value="Dry Items">Dry Items</option>
+                  <option value="Spices">Spices</option>
+                  <option value="Miscellaneous">Miscellaneous</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Unit *</label>
+                <select
+                  value={newInventoryItem.unit}
+                  onChange={(e) => setNewInventoryItem(prev => ({ ...prev, unit: e.target.value }))}
+                  className="w-full p-2 border rounded-lg"
+                >
+                  <option value="kg">kg</option>
+                  <option value="litre">litre</option>
+                  <option value="pieces">pieces</option>
+                  <option value="bunch">bunch</option>
+                  <option value="box">box</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Supplier</label>
+                <select
+                  value={newInventoryItem.supplier}
+                  onChange={(e) => setNewInventoryItem(prev => ({ ...prev, supplier: e.target.value }))}
+                  className="w-full p-2 border rounded-lg"
+                >
+                  <option value="Pacific Seafood">Pacific Seafood</option>
+                  <option value="Booker">Booker</option>
+                  <option value="Local Butcher">Local Butcher</option>
+                  <option value="Fish Market">Fish Market</option>
+                  <option value="Indian Grocers">Indian Grocers</option>
+                  <option value="Local Supplier">Local Supplier</option>
+                </select>
               </div>
             </div>
-          )}
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Opening Stock *</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={newInventoryItem.openingStock}
+                  onChange={(e) => setNewInventoryItem(prev => ({ ...prev, openingStock: e.target.value }))}
+                  className="w-full p-2 border rounded-lg"
+                  placeholder="0"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Received This Week</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={newInventoryItem.receivedThisWeek}
+                  onChange={(e) => setNewInventoryItem(prev => ({ ...prev, receivedThisWeek: e.target.value }))}
+                  className="w-full p-2 border rounded-lg"
+                  placeholder="0"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Reorder Level</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={newInventoryItem.reorderLevel}
+                  onChange={(e) => setNewInventoryItem(prev => ({ ...prev, reorderLevel: e.target.value }))}
+                  className="w-full p-2 border rounded-lg"
+                  placeholder="1"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Unit Cost (£) *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={newInventoryItem.unitCost}
+                  onChange={(e) => setNewInventoryItem(prev => ({ ...prev, unitCost: e.target.value }))}
+                  className="w-full p-2 border rounded-lg"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
+            <div className="flex space-x-3">
+              {editingInventoryItem ? (
+                <button
+                  onClick={handleUpdateInventoryItem}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
+                >
+                  <Save className="mr-2" size={16} />
+                  Update Item
+                </button>
+              ) : (
+                <button
+                  onClick={handleAddInventoryItem}
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center"
+                >
+                  <Plus className="mr-2" size={16} />
+                  Add Item
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  setShowAddInventoryItem(false);
+                  setEditingInventoryItem(null);
+                  setNewInventoryItem({
+                    name: '',
+                    unit: 'kg',
+                    openingStock: '',
+                    receivedThisWeek: '',
+                    reorderLevel: '',
+                    unitCost: '',
+                    supplier: 'Local Supplier',
+                    category: 'Dry Items'
+                  });
+                }}
+                className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Inventory Table */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full bg-white border rounded-lg">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left">Item</th>
+                <th className="px-4 py-2 text-left">Category</th>
+                <th className="px-4 py-2 text-left">Unit</th>
+                <th className="px-4 py-2 text-left">Opening</th>
+                <th className="px-4 py-2 text-left">Received</th>
+                <th className="px-4 py-2 text-left">Used</th>
+                <th className="px-4 py-2 text-left">Closing</th>
+                <th className="px-4 py-2 text-left">Reorder</th>
+                <th className="px-4 py-2 text-left">Cost/Unit</th>
+                <th className="px-4 py-2 text-left">Value</th>
+                <th className="px-4 py-2 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {getInventoryMetrics().map(item => (
+                <tr key={item.id} className={item.closingBalance <= item.reorderLevel ? 'bg-red-50' : ''}>
+                  <td className="px-4 py-2 font-medium">{item.name}</td>
+                  <td className="px-4 py-2">
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      item.category === 'Meat' ? 'bg-red-100 text-red-800' :
+                      item.category === 'Vegetables' ? 'bg-green-100 text-green-800' :
+                      item.category === 'Spices' ? 'bg-orange-100 text-orange-800' :
+                      item.category === 'Seafood' ? 'bg-cyan-100 text-cyan-800' :
+                      item.category === 'Dairy' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {item.category}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2">{item.unit}</td>
+                  <td className="px-4 py-2">{item.openingStock}</td>
+                  <td className="px-4 py-2">{item.receivedThisWeek}</td>
+                  <td className="px-4 py-2">{item.usedThisWeek.toFixed(2)}</td>
+                  <td className="px-4 py-2">
+                    <span className={item.closingBalance <= item.reorderLevel ? 'text-red-600 font-bold' : ''}>
+                      {item.closingBalance.toFixed(2)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2">{item.reorderLevel}</td>
+                  <td className="px-4 py-2">£{item.unitCost.toFixed(2)}</td>
+                  <td className="px-4 py-2">£{item.stockValue.toFixed(2)}</td>
+                  <td className="px-4 py-2">
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleEditInventoryItem(item)}
+                        className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                        title="Edit Item"
+                      >
+                        <Edit size={16} />
+                      </button>
+                      {userRole === 'owner' && (
+                        <button
+                          onClick={() => handleDeleteInventoryItem(item.id, item.name)}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded"
+                          title="Delete Item"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Summary Stats */}
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <div className="text-sm text-gray-600">Total Items</div>
+            <div className="text-2xl font-bold text-blue-600">{inventory.length}</div>
+          </div>
+          <div className="bg-green-50 p-4 rounded-lg">
+            <div className="text-sm text-gray-600">Total Stock Value</div>
+            <div className="text-2xl font-bold text-green-600">
+              £{getInventoryMetrics().reduce((sum, item) => sum + item.stockValue, 0).toFixed(2)}
+            </div>
+          </div>
+          <div className="bg-red-50 p-4 rounded-lg">
+            <div className="text-sm text-gray-600">Low Stock Items</div>
+            <div className="text-2xl font-bold text-red-600">
+              {getInventoryMetrics().filter(item => item.closingBalance <= item.reorderLevel).length}
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
 
           {/* Other tabs would go here */}
           {activeTab === 'smart-planning' && (

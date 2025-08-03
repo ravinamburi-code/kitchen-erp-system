@@ -7,6 +7,10 @@ import {
   TrendingUp, TrendingDown, Clock, Printer
 } from 'lucide-react';
 
+// ADD THESE TWO LINES:
+import EnhancedRecipeBank from './EnhancedRecipeBank';
+import EnhancedPrepLog from './EnhancedPrepLog';
+
 const KitchenERP = () => {
 
   // Load data from localStorage on mount
@@ -483,14 +487,11 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
     }
   };
 
-  // Helper: Get dishes for prep log dropdown
   const getRecipeDishes = () => {
-    return menuItems
-      .filter(item => item.requires_recipe)
-      .map(item => item.dish_name)
-      .filter((dish, index, self) => self.indexOf(dish) === index)
-      .sort();
-  };
+  // Get dishes from recipes that have metadata
+  const metadata = JSON.parse(localStorage.getItem('recipeMetadata') || '{}');
+  return Object.keys(metadata).sort();
+};
 
   // Helper: Get menu by location
   const getMenuByLocation = (location) => {
@@ -2342,326 +2343,17 @@ const UserManagement = () => {
           {/* 3. ENHANCED PREP LOG COMPONENT - Replace your existing prep tab content */}
 
 
-
-
-    {activeTab === 'prep' && (
-      <div className="p-6">
-        <h2 className="text-2xl font-bold mb-6 flex items-center">
-          <ChefHat className="mr-2" /> Smart Prep Planning
-        </h2>
-
-        {/* Smart Prep Suggestions */}
-        <div className="mb-6 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-blue-800">
-              🧠 Today's Prep Suggestions - {new Date().toLocaleDateString('en-US', { weekday: 'long' })}
-            </h3>
-            <span className="text-sm text-gray-600">
-              Based on last week's sales
-            </span>
-          </div>
-
-          <div className="space-y-3">
-            {getRecipeDishes().map(dishName => {
-              const suggestion = calculatePrepSuggestion(dishName);
-
-              // Skip if no prep needed
-              if (suggestion.kgToPrepare === 0) return null;
-
-              return (
-                <div
-                  key={dishName}
-                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${
-                    suggestion.priority === 'high'
-                      ? 'bg-red-50 border-red-300 hover:border-red-400'
-                      : suggestion.priority === 'medium'
-                      ? 'bg-yellow-50 border-yellow-300 hover:border-yellow-400'
-                      : 'bg-green-50 border-green-300 hover:border-green-400'
-                  }`}
-                  onClick={() => {
-                    // Auto-fill prep form
-                    setNewPrepEntry({
-                      dishName: suggestion.dishName,
-                      quantityCooked: suggestion.kgToPrepare.toString(),
-                      containerSize: suggestion.config.containerSize,
-                      portionSize: suggestion.config.portionSize,
-                      preparedBy: newPrepEntry.preparedBy
-                    });
-                  }}
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h4 className="font-bold text-lg">{suggestion.dishName}</h4>
-                      <p className="text-sm text-gray-600">
-                        Current: {suggestion.totalStock}p
-                        {suggestion.oldStock > 0 && (
-                          <span className="text-orange-600 ml-2">
-                            ({suggestion.oldStock}p old stock!)
-                          </span>
-                        )}
-                        • Avg daily: {suggestion.avgDailySales}p
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold">
-                        Make {suggestion.kgToPrepare} kg
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        = {suggestion.totalPortions} portions
-                      </div>
-                      <div className="text-xs text-blue-600 mt-1">
-                        Click to prep this
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            }).filter(Boolean)}
-
-            {/* If all items have sufficient stock */}
-            {getRecipeDishes().every(dish => calculatePrepSuggestion(dish).kgToPrepare === 0) && (
-              <div className="text-center py-8 text-gray-500">
-                <CheckCircle size={48} className="mx-auto mb-2 text-green-500" />
-                <p className="text-lg">All items have sufficient stock!</p>
-                <p className="text-sm">Check back later or prep for tomorrow.</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Prep Entry Form - Enhanced */}
-        <div className="bg-white border rounded-lg p-6 mb-6">
-          <h3 className="text-lg font-semibold mb-4">
-            🧑‍🍳 Add New Prep Entry {newPrepEntry.dishName && `- ${newPrepEntry.dishName}`}
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Dish Name *
-              </label>
-              <select
-                value={newPrepEntry.dishName}
-                onChange={(e) => {
-                  const dish = e.target.value;
-                  const config = portionConfig[dish] || portionConfig['default'];
-                  setNewPrepEntry({
-                    ...newPrepEntry,
-                    dishName: dish,
-                    portionSize: config.portionSize,
-                    containerSize: config.containerSize
-                  });
-                }}
-                className="w-full px-3 py-2 border rounded-lg"
-                required
-              >
-                <option value="">Select Dish</option>
-                {menuLoading ? (
-                  <option disabled>Loading menu...</option>
-                ) : (
-                  getRecipeDishes().map(dish => (
-                    <option key={dish} value={dish}>{dish}</option>
-                  ))
-                )}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Quantity (kg) *
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                value={newPrepEntry.quantityCooked}
-                onChange={(e) => setNewPrepEntry(prev => ({
-                  ...prev,
-                  quantityCooked: e.target.value
-                }))}
-                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-                placeholder="5.0"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Container Size</label>
-              <input
-                type="text"
-                value={newPrepEntry.containerSize}
-                className="w-full p-2 border rounded bg-gray-100"
-                readOnly
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Portion Size (g)</label>
-              <input
-                type="number"
-                value={newPrepEntry.portionSize}
-                className="w-full p-2 border rounded bg-gray-100"
-                readOnly
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Chef Name</label>
-              <select
-                value={newPrepEntry.preparedBy}
-                onChange={(e) => setNewPrepEntry(prev => ({
-                  ...prev,
-                  preparedBy: e.target.value
-                }))}
-                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="Vasanth">Vasanth</option>
-                <option value="Swetha">Swetha</option>
-                <option value="Sravanthi">Sravanthi</option>
-                <option value="Asritha">Asritha</option>
-              </select>
-            </div>
-
-            <div className="flex items-end">
-              <button
-                onClick={handlePrepSubmit}
-                className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:ring-2 focus:ring-green-500"
-              >
-                <Plus size={16} className="inline mr-1" />
-                Add Prep
-              </button>
-            </div>
-          </div>
-
-          {/* Live Calculation Display - Enhanced */}
-          {newPrepEntry.quantityCooked && newPrepEntry.portionSize && (
-            <div className="mt-4 p-3 bg-green-50 rounded border border-green-200">
-              <div className="text-sm text-green-800">
-                <span className="font-medium">Total Portions: </span>
-                <span className="text-lg font-bold">
-                  {Math.floor((parseFloat(newPrepEntry.quantityCooked) * 1000) / newPrepEntry.portionSize)}
-                </span>
-                {newPrepEntry.dishName && (
-                  <span className="ml-4 text-green-600">
-                    Using {portionConfig[newPrepEntry.dishName]?.containerSize || '500ml'} containers
-                  </span>
-                )}
-              </div>
-            </div>
+          {activeTab === 'prep' && (
+            <EnhancedPrepLog
+              prepLog={prepLog}
+              setPrepLog={setPrepLog}
+              recipes={recipes}
+              inventory={inventory}
+              sales={sales}
+              calculateDishCost={calculateDishCost}
+              checkIngredientAvailability={checkIngredientAvailability}
+            />
           )}
-        </div>
-
-        {/* Current Prep Log with Age Tracking */}
-        <div className="bg-white border rounded-lg">
-          <div className="p-4 border-b">
-            <h3 className="text-lg font-semibold">Today's Prep Log with Age Tracking</h3>
-            <p className="text-sm text-gray-600">Items show age for quality tracking</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-
-<thead className="bg-gray-50">
-<tr>
-  <th className="px-4 py-2 text-left">Dish Name</th>
-  <th className="px-4 py-2 text-left">Qty Cooked (kg)</th>
-  <th className="px-4 py-2 text-left">Container Size</th>
-  <th className="px-4 py-2 text-left">Portion Size (g)</th>
-  <th className="px-4 py-2 text-left">Total Portions</th>
-  <th className="px-4 py-2 text-left">Prepared By</th>
-  {currentPermissions.canSeeCosts && (
-    <>
-      <th className="px-4 py-2 text-left">Cost per kg</th>
-      <th className="px-4 py-2 text-left">Total Cost</th>
-    </>
-  )}
-  <th className="px-4 py-2 text-left">Status</th>
-  <th className="px-4 py-2 text-left">Actions</th>  {/* ADD THIS LINE */}
-</tr>
-</thead>
-              <tbody className="divide-y">
-                {prepLog.map(prep => {
-                  // Calculate age
-                  const prepTime = new Date(prep.timestamp || `${prep.date}T09:00:00`);
-                  const now = new Date();
-                  const ageInHours = Math.floor((now - prepTime) / (1000 * 60 * 60));
-                  const ageInDays = Math.floor(ageInHours / 24);
-
-                  let ageDisplay, ageColor;
-                  if (ageInDays > 0) {
-                    ageDisplay = `${ageInDays} day${ageInDays > 1 ? 's' : ''} old`;
-                    ageColor = ageInDays >= 2 ? 'text-red-600' : 'text-orange-600';
-                  } else {
-                    ageDisplay = `${ageInHours} hour${ageInHours !== 1 ? 's' : ''} old`;
-                    ageColor = 'text-green-600';
-                  }
-
-                  return (
-                    <tr key={prep.id} className={
-                      prep.processed ? 'bg-green-50' :
-                      ageInDays >= 2 ? 'bg-red-50' :
-                      ageInDays >= 1 ? 'bg-yellow-50' :
-                      'bg-white'
-                    }>
-                      <td className="px-4 py-2 font-medium">{prep.dishName}</td>
-                      <td className="px-4 py-2">{prep.quantityCooked}kg</td>
-                      <td className="px-4 py-2">
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                          {prep.containerSize}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2">
-                        <span className="font-bold text-green-600">{prep.totalPortions}p</span>
-                      </td>
-                      <td className="px-4 py-2">{prep.preparedBy}</td>
-                      <td className="px-4 py-2">
-                        <div className="text-sm">
-                          {new Date(prep.timestamp || `${prep.date}T09:00:00`).toLocaleTimeString('en-US', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2">
-                        <span className={`font-medium ${ageColor}`}>
-                          {ageDisplay}
-                        </span>
-                      </td>
-                      {currentPermissions.canSeeCosts && (
-                        <>
-                          <td className="px-4 py-2">£{calculateDishCost(prep.dishName).toFixed(2)}</td>
-                          <td className="px-4 py-2 font-medium">
-                            £{(calculateDishCost(prep.dishName) * prep.quantityCooked).toFixed(2)}
-                          </td>
-                        </>
-                      )}
-                      <td className="px-4 py-2">
-    {prep.processed ? (
-      <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">Dispatched</span>
-    ) : (
-      <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Ready for Dispatch</span>
-    )}
-  </td>
-  <td className="px-4 py-2">  {/* NEW DELETE BUTTON CELL */}
-    {!prep.processed && (
-      <button
-        onClick={() => handleDeletePrepItem(prep.id)}
-        className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
-        title="Delete this prep entry"
-      >
-        <Trash2 size={14} className="inline mr-1" />
-        Delete
-      </button>
-    )}
-    {prep.processed && (
-      <span className="text-gray-400 text-sm">Dispatched</span>
-    )}
-  </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    )}
 
 
 
@@ -3248,153 +2940,15 @@ const UserManagement = () => {
           {activeTab === 'reports' && <Reports />}
 
           {activeTab === 'recipe-bank' && (
-            <div className="p-6">
-              <h2 className="text-2xl font-bold mb-6 flex items-center">
-                <ChefHat className="mr-2" /> Recipe Bank
-              </h2>
-
-              {/* Recipe Statistics */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                {[...new Set(recipes.map(r => r.dishName))].map(dish => {
-                  const dishRecipes = recipes.filter(r => r.dishName === dish);
-                  const totalCost = dishRecipes.reduce((sum, recipe) => {
-                    const inventoryItem = inventory.find(i => i.name === recipe.ingredient);
-                    return sum + (inventoryItem ? recipe.quantityPer1kg * inventoryItem.unitCost : 0);
-                  }, 0);
-
-                  return (
-                    <div key={dish} className="bg-white border rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className="font-semibold text-lg">{dish}</h3>
-                        <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                          {dishRecipes.length} ingredients
-                        </span>
-                      </div>
-                      <div className="space-y-1 text-sm text-gray-600">
-                        <div>Cost per kg: <span className="font-medium text-green-600">£{totalCost.toFixed(2)}</span></div>
-                        <div>Cost per portion: <span className="font-medium text-green-600">£{(totalCost * 160/1000).toFixed(2)}</span></div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Complete Recipes by Dish */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {[...new Set(recipes.map(r => r.dishName))].map(dishName => {
-                  const dishRecipes = recipes.filter(r => r.dishName === dishName);
-                  const totalCost = dishRecipes.reduce((sum, recipe) => {
-                    const inventoryItem = inventory.find(i => i.name === recipe.ingredient);
-                    return sum + (inventoryItem ? recipe.quantityPer1kg * inventoryItem.unitCost : 0);
-                  }, 0);
-
-                  return (
-                    <div key={dishName} className="bg-white border rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-3">
-                        <h4 className="text-lg font-semibold text-blue-600">{dishName}</h4>
-                        <div className="text-right text-sm">
-                          <div className="font-medium text-green-600">£{totalCost.toFixed(2)}/kg</div>
-                          <div className="text-gray-500">£{(totalCost * 0.16).toFixed(2)}/portion</div>
-                        </div>
-                      </div>
-                      <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {dishRecipes.map(recipe => {
-                          const inventoryItem = inventory.find(i => i.name === recipe.ingredient);
-                          const itemCost = inventoryItem ? recipe.quantityPer1kg * inventoryItem.unitCost : 0;
-
-                          return (
-                            <div key={recipe.id} className="flex justify-between items-center text-sm border-l-2 border-blue-200 pl-2">
-                              <span>{recipe.ingredient}</span>
-                              <span className="text-gray-600">
-                                {recipe.quantityPer1kg} {recipe.unit}
-                                {inventoryItem && ` (£${itemCost.toFixed(3)})`}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* All Recipe Items Table */}
-              <div className="mt-6 bg-white border rounded-lg">
-                <div className="p-4 border-b">
-                  <h3 className="text-lg font-semibold">All Recipe Items</h3>
-                  <p className="text-sm text-gray-600">Complete list of ingredients for all dishes</p>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-2 text-left">Dish Name</th>
-                        <th className="px-4 py-2 text-left">Ingredient</th>
-                        <th className="px-4 py-2 text-left">Quantity per 1kg</th>
-                        <th className="px-4 py-2 text-left">Unit</th>
-                        <th className="px-4 py-2 text-left">Cost per kg dish</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {recipes.map(recipe => {
-                        const inventoryItem = inventory.find(i => i.name === recipe.ingredient);
-                        const itemCost = inventoryItem ? recipe.quantityPer1kg * inventoryItem.unitCost : 0;
-
-                        return (
-                          <tr key={recipe.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-2 font-medium text-blue-600">{recipe.dishName}</td>
-                            <td className="px-4 py-2">{recipe.ingredient}</td>
-                            <td className="px-4 py-2">{recipe.quantityPer1kg}</td>
-                            <td className="px-4 py-2">{recipe.unit}</td>
-                            <td className="px-4 py-2 font-medium text-green-600">
-                              £{itemCost.toFixed(3)}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Recipe Summary */}
-                <div className="p-4 border-t bg-gray-50">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
-                    <div>
-                      <div className="text-sm text-gray-600">Total Dishes</div>
-                      <div className="text-lg font-bold text-blue-600">
-                        {[...new Set(recipes.map(r => r.dishName))].length}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-600">Total Recipe Items</div>
-                      <div className="text-lg font-bold text-green-600">
-                        {recipes.length}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-600">Avg Items per Dish</div>
-                      <div className="text-lg font-bold text-purple-600">
-                        {(recipes.length / [...new Set(recipes.map(r => r.dishName))].length).toFixed(1)}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-600">Avg Cost per Dish</div>
-                      <div className="text-lg font-bold text-orange-600">
-                        £{([...new Set(recipes.map(r => r.dishName))].reduce((sum, dish) => {
-                          const dishRecipes = recipes.filter(r => r.dishName === dish);
-                          const dishCost = dishRecipes.reduce((cost, recipe) => {
-                            const inventoryItem = inventory.find(i => i.name === recipe.ingredient);
-                            return cost + (inventoryItem ? recipe.quantityPer1kg * inventoryItem.unitCost : 0);
-                          }, 0);
-                          return sum + dishCost;
-                        }, 0) / [...new Set(recipes.map(r => r.dishName))].length).toFixed(2)}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+      <EnhancedRecipeBank
+        recipes={recipes}
+        setRecipes={setRecipes}
+        inventory={inventory}
+        setInventory={setInventory}
+        userRole={userRole}
+        calculateDishCost={calculateDishCost}
+      />
+    )}
 
           {activeTab === 'inventory' && (
             <div className="p-6">

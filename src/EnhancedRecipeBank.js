@@ -61,14 +61,15 @@ const EnhancedRecipeBank = ({
   };
 
   // Calculate portions based on cooked weight and portion size
-  const calculatePortions = () => {
-    if (newRecipe.cookedWeight && newRecipe.portionSize && autoCalculatePortions) {
-      const cookedGrams = parseFloat(newRecipe.cookedWeight) * 1000;
-      const portionSizeGrams = parseFloat(newRecipe.portionSize);
+  const calculatePortions = (cookedWeightValue = null, portionSizeValue = null) => {
+    const cookedWeight = cookedWeightValue !== null ? cookedWeightValue : newRecipe.cookedWeight;
+    const portionSize = portionSizeValue !== null ? portionSizeValue : newRecipe.portionSize;
+
+    if (cookedWeight && portionSize && autoCalculatePortions) {
+      const portionSizeGrams = parseFloat(portionSize);
 
       if (portionSizeGrams > 0) {
-        const portions = Math.floor(cookedGrams / portionSizeGrams);
-        const portionsPerKg = portions / parseFloat(newRecipe.cookedWeight);
+        const portionsPerKg = 1000 / portionSizeGrams;
 
         setNewRecipe(prev => ({
           ...prev,
@@ -449,8 +450,9 @@ const EnhancedRecipeBank = ({
                 step="0.1"
                 value={newRecipe.cookedWeight}
                 onChange={(e) => {
-                  setNewRecipe(prev => ({ ...prev, cookedWeight: e.target.value }));
-                  calculatePortions();
+                  const newValue = e.target.value;
+                  setNewRecipe(prev => ({ ...prev, cookedWeight: newValue }));
+                  calculatePortions(newValue, newRecipe.portionSize);
                 }}
                 className="w-full p-2 border rounded-lg"
                 placeholder="4.5"
@@ -493,8 +495,9 @@ const EnhancedRecipeBank = ({
                 type="number"
                 value={newRecipe.portionSize}
                 onChange={(e) => {
-                  setNewRecipe(prev => ({ ...prev, portionSize: e.target.value }));
-                  calculatePortions();
+                  const newValue = e.target.value;
+                  setNewRecipe(prev => ({ ...prev, portionSize: newValue }));
+                  calculatePortions(newRecipe.cookedWeight, newValue);
                 }}
                 className="w-full p-2 border rounded-lg bg-white"
                 placeholder="160"

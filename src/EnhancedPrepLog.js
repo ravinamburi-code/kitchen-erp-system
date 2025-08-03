@@ -1,8 +1,8 @@
-// EnhancedPrepLog.js - Complete Working Version
+// EnhancedPrepLog.js - Complete Working Version with Auto-Calculations
 import React, { useState, useEffect } from 'react';
 import {
   ChefHat, Plus, Calculator, AlertTriangle, CheckCircle,
-  TrendingUp, Clock, Package, Trash2
+  TrendingUp, Clock, Package, Trash2, Info
 } from 'lucide-react';
 
 const EnhancedPrepLog = ({
@@ -36,7 +36,7 @@ const EnhancedPrepLog = ({
     }
   };
 
-  // Enhanced prep entry state
+  // Enhanced prep entry state with auto-calculate flag
   const [newPrepEntry, setNewPrepEntry] = useState({
     dishName: '',
     rawWeight: '',
@@ -44,10 +44,15 @@ const EnhancedPrepLog = ({
     actualYield: '',
     containerSize: '',
     portionSize: '',
+    portionsPerKg: '',
     totalPortions: '',
     preparedBy: 'Vasanth',
     temperature: '',
-    notes: ''
+    notes: '',
+    // Recipe Bank metadata for calculations
+    recipeYield: '',
+    recipePortionsPerKg: '',
+    autoCalculate: true  // Flag for auto-calculation mode
   });
 
   // Smart suggestions state
@@ -116,7 +121,9 @@ const EnhancedPrepLog = ({
       expectedDemand,
       needToPrepare,
       kgToPrepare,
-      rawWeightNeeded: metadata.rawWeight ? (kgToPrepare * metadata.rawWeight / metadata.cookedWeight) : kgToPrepare,
+      rawWeightNeeded: metadata.rawWeight && metadata.yield
+        ? (kgToPrepare / (metadata.yield / 100)).toFixed(1)
+        : kgToPrepare,
       totalPortions: Math.floor(kgToPrepare * (metadata.portionsPerKg || 8)),
       priority: needToPrepare > expectedDemand * 0.5 ? 'high' :
                needToPrepare > 0 ? 'medium' : 'low'
@@ -128,17 +135,24 @@ const EnhancedPrepLog = ({
     const metadata = getRecipeMetadata(dishName);
     if (metadata) {
       console.log('Loading metadata for:', dishName, metadata);
+
+      // Store recipe data for calculations
       setNewPrepEntry({
         dishName,
         rawWeight: '',
         cookedWeight: '',
         actualYield: '',
         containerSize: metadata.containerSize || '500ml',
-        portionSize: (metadata.portionSize || 160).toString(),
+        portionSize: metadata.portionSize?.toString() || '160',
+        portionsPerKg: metadata.portionsPerKg?.toString() || '8',
         totalPortions: '',
         preparedBy: newPrepEntry.preparedBy,
         temperature: '',
-        notes: metadata.yield ? `Standard recipe - Expected yield: ${metadata.yield}%` : ''
+        notes: `Recipe Bank: Container ${metadata.containerSize}, Yield ${metadata.yield}%, ${metadata.portionsPerKg} portions/kg`,
+        // Store recipe metadata for calculations
+        recipeYield: metadata.yield || 90,
+        recipePortionsPerKg: metadata.portionsPerKg || 8,
+        autoCalculate: true
       });
     } else {
       // If no metadata, use defaults
@@ -149,39 +163,99 @@ const EnhancedPrepLog = ({
         actualYield: '',
         containerSize: '500ml',
         portionSize: '160',
+        portionsPerKg: '8',
         totalPortions: '',
         preparedBy: newPrepEntry.preparedBy,
         temperature: '',
-        notes: 'No recipe metadata found - using defaults'
+        notes: 'No recipe metadata found - using defaults',
+        recipeYield: 90,
+        recipePortionsPerKg: 8,
+        autoCalculate: false
       });
     }
   };
 
-  // Calculate portions when weight changes
-  const handleCookedWeightChange = (weight) => {
-    const metadata = getRecipeMetadata(newPrepEntry.dishName);
-    if (weight) {
-      const cookedGrams = parseFloat(weight) * 1000;
-      const portionSizeGrams = parseFloat(newPrepEntry.portionSize || metadata?.portionSize || 160);
-      const portions = Math.floor(cookedGrams / portionSizeGrams);
+  // Handle raw weight change with auto-calculations
+  const handleRawWeightChange = (weight) => {
+    if (!weight) {
+      setNewPrepEntry(prev => ({
+        ...prev,
+        rawWeight: '',
+        cookedWeight: '',
+        actualYield: '',
+        totalPortions: ''
+      }));
+      return;
+    }
 
-      const actualYield = newPrepEntry.rawWeight
-        ? ((parseFloat(weight) / parseFloat(newPrepEntry.rawWeight)) * 100).toFixed(1)
-        : '';
+    const rawWeightNum = parseFloat(weight);
+
+    if (newPrepEntry.autoCalculate && newPrepEntry.recipeYield) {
+      // Auto-calculate cooked weight using recipe yield
+      const cookedWeight = (rawWeightNum * (newPrepEntry.recipeYield / 100)).toFixed(2);
+
+      // Calculate total portions using recipe portions per kg
+      const totalPortions = Math.floor(parseFloat(cookedWeight) * parseFloat(newPrepEntry.recipePortionsPerKg || 8));
 
       setNewPrepEntry(prev => ({
         ...prev,
-        cookedWeight: weight,
-        totalPortions: portions.toString(),
-        actualYield
+        rawWeight: weight,
+        cookedWeight: cookedWeight,
+        actualYield: prev.recipeYield.toString(),
+        totalPortions: totalPortions.toString()
       }));
     } else {
+      // Manual mode - just update raw weight
       setNewPrepEntry(prev => ({
         ...prev,
-        cookedWeight: weight,
+        rawWeight: weight
+      }));
+    }
+  };
+
+  // Handle manual cooked weight change
+  const handleCookedWeightChange = (weight) => {
+    if (!weight) {
+      setNewPrepEntry(prev => ({
+        ...prev,
+        cookedWeight: '',
         totalPortions: '',
         actualYield: ''
       }));
+      return;
+    }
+
+    const cookedWeightNum = parseFloat(weight);
+
+    // Calculate actual yield if raw weight exists
+    let actualYield = '';
+    if (newPrepEntry.rawWeight) {
+      actualYield = ((cookedWeightNum / parseFloat(newPrepEntry.rawWeight)) * 100).toFixed(1);
+    }
+
+    // Calculate portions
+    const portionsPerKg = parseFloat(newPrepEntry.portionsPerKg || newPrepEntry.recipePortionsPerKg || 8);
+    const totalPortions = Math.floor(cookedWeightNum * portionsPerKg);
+
+    setNewPrepEntry(prev => ({
+      ...prev,
+      cookedWeight: weight,
+      actualYield: actualYield,
+      totalPortions: totalPortions.toString(),
+      autoCalculate: false  // Switch to manual mode when user edits cooked weight
+    }));
+  };
+
+  // Toggle auto-calculate mode
+  const toggleAutoCalculate = (enabled) => {
+    setNewPrepEntry(prev => ({
+      ...prev,
+      autoCalculate: enabled
+    }));
+
+    // If enabling auto-calculate and we have raw weight, recalculate
+    if (enabled && newPrepEntry.rawWeight && newPrepEntry.recipeYield) {
+      handleRawWeightChange(newPrepEntry.rawWeight);
     }
   };
 
@@ -216,7 +290,7 @@ const EnhancedPrepLog = ({
         rawWeight: parseFloat(newPrepEntry.rawWeight) || 0,
         quantityCooked: parseFloat(newPrepEntry.cookedWeight),
         actualYield: parseFloat(newPrepEntry.actualYield) || 0,
-        expectedYield: metadata?.yield || 0,
+        expectedYield: metadata?.yield || newPrepEntry.recipeYield || 0,
         preparedBy: newPrepEntry.preparedBy,
         portionSize: parseInt(newPrepEntry.portionSize) || 160,
         containerSize: newPrepEntry.containerSize || '500ml',
@@ -225,7 +299,8 @@ const EnhancedPrepLog = ({
         notes: newPrepEntry.notes,
         processed: false,
         status: 'fresh',
-        cost: calculateDishCost(newPrepEntry.dishName, parseFloat(newPrepEntry.cookedWeight))
+        cost: calculateDishCost(newPrepEntry.dishName, parseFloat(newPrepEntry.cookedWeight)),
+        autoCalculated: newPrepEntry.autoCalculate
       };
 
       setPrepLog(prev => [...prev, newEntry]);
@@ -240,7 +315,7 @@ const EnhancedPrepLog = ({
       }
 
       // Success message
-      alert(`✅ Successfully added ${newEntry.totalPortions} portions of ${newEntry.dishName}!\n\n📦 Container: ${newEntry.containerSize}\n⚖️ Portion: ${newEntry.portionSize}g\n📊 Yield: ${newEntry.actualYield}%\n👨‍🍳 Chef: ${newEntry.preparedBy}`);
+      alert(`✅ Successfully added ${newEntry.totalPortions} portions of ${newEntry.dishName}!\n\n📦 Container: ${newEntry.containerSize}\n⚖️ Portion: ${newEntry.portionSize}g\n📊 Yield: ${newEntry.actualYield}%\n👨‍🍳 Chef: ${newEntry.preparedBy}\n${newEntry.autoCalculated ? '🤖 Auto-calculated from Recipe Bank' : '✏️ Manually entered'}`);
 
       // Reset form
       setNewPrepEntry({
@@ -250,10 +325,14 @@ const EnhancedPrepLog = ({
         actualYield: '',
         containerSize: '',
         portionSize: '',
+        portionsPerKg: '',
         totalPortions: '',
         preparedBy: newPrepEntry.preparedBy,
         temperature: '',
-        notes: ''
+        notes: '',
+        recipeYield: '',
+        recipePortionsPerKg: '',
+        autoCalculate: true
       });
     } else {
       alert('❌ Please fill in all required fields');
@@ -324,7 +403,7 @@ const EnhancedPrepLog = ({
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-6 flex items-center">
-        <ChefHat className="mr-2" /> Smart Prep Planning with Recipe Integration
+        <ChefHat className="mr-2" /> Smart Prep Planning with Auto-Calculations
       </h2>
 
       {/* Smart Prep Suggestions */}
@@ -356,12 +435,7 @@ const EnhancedPrepLog = ({
                 onClick={() => {
                   handleDishSelection(suggestion.dishName);
                   // Auto-fill with suggested quantities
-                  setNewPrepEntry(prev => ({
-                    ...prev,
-                    rawWeight: suggestion.rawWeightNeeded.toFixed(1),
-                    cookedWeight: suggestion.kgToPrepare.toString()
-                  }));
-                  handleCookedWeightChange(suggestion.kgToPrepare.toString());
+                  handleRawWeightChange(suggestion.rawWeightNeeded);
                 }}
               >
                 <div className="flex justify-between items-center">
@@ -388,7 +462,7 @@ const EnhancedPrepLog = ({
                       Prep {suggestion.kgToPrepare} kg
                     </div>
                     <div className="text-sm text-gray-600">
-                      Raw needed: {suggestion.rawWeightNeeded.toFixed(1)} kg
+                      Raw needed: {suggestion.rawWeightNeeded} kg
                     </div>
                     <div className="text-sm text-blue-600">
                       = {suggestion.totalPortions} portions
@@ -410,11 +484,51 @@ const EnhancedPrepLog = ({
         </div>
       </div>
 
-      {/* Enhanced Prep Entry Form */}
+      {/* Enhanced Prep Entry Form with Auto-Calculate */}
       <div className="bg-white border rounded-lg p-6 mb-6">
-        <h3 className="text-lg font-semibold mb-4">
-          🧑‍🍳 Add New Prep Entry {newPrepEntry.dishName && `- ${newPrepEntry.dishName}`}
-        </h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">
+            🧑‍🍳 Add New Prep Entry {newPrepEntry.dishName && `- ${newPrepEntry.dishName}`}
+          </h3>
+
+          {/* Auto-Calculate Toggle */}
+          <div className="flex items-center space-x-2">
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={newPrepEntry.autoCalculate}
+                onChange={(e) => toggleAutoCalculate(e.target.checked)}
+                className="mr-2"
+              />
+              <span className="text-sm font-medium flex items-center">
+                <Calculator className="mr-1" size={16} />
+                Auto-Calculate from Recipe Bank
+              </span>
+            </label>
+            <Info
+              className="text-gray-400 cursor-help"
+              size={16}
+              title="When enabled, cooked weight and portions are calculated automatically based on Recipe Bank data"
+            />
+          </div>
+        </div>
+
+        {/* Auto-Calculate Info Banner */}
+        {newPrepEntry.autoCalculate && newPrepEntry.dishName && newPrepEntry.recipeYield && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start">
+              <Info className="mr-2 text-blue-600 mt-0.5" size={16} />
+              <div className="text-sm text-blue-800">
+                <strong>Auto-Calculate Mode Active:</strong> Using Recipe Bank data
+                <div className="mt-1 grid grid-cols-3 gap-4 text-xs">
+                  <div>Expected Yield: {newPrepEntry.recipeYield}%</div>
+                  <div>Portions/kg: {newPrepEntry.recipePortionsPerKg}</div>
+                  <div>Portion Size: {newPrepEntry.portionSize}g</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           <div>
@@ -441,29 +555,42 @@ const EnhancedPrepLog = ({
 
           <div>
             <label className="block text-sm font-medium mb-1">
-              Raw Weight (kg)
+              Raw Weight (kg) {newPrepEntry.autoCalculate && '*'}
+              {newPrepEntry.autoCalculate && (
+                <span className="text-xs text-blue-600 ml-2">Primary Input</span>
+              )}
             </label>
             <input
               type="number"
               step="0.1"
               value={newPrepEntry.rawWeight}
-              onChange={(e) => setNewPrepEntry(prev => ({ ...prev, rawWeight: e.target.value }))}
-              className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-              placeholder="5.0"
+              onChange={(e) => handleRawWeightChange(e.target.value)}
+              className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 ${
+                newPrepEntry.autoCalculate ? 'bg-yellow-50 border-yellow-300' : ''
+              }`}
+              placeholder="Enter raw weight"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-1">
               Cooked Weight (kg) *
+              {newPrepEntry.autoCalculate && (
+                <span className="text-xs text-green-600 ml-2">
+                  <Calculator className="inline" size={12} /> Auto
+                </span>
+              )}
             </label>
             <input
               type="number"
               step="0.1"
               value={newPrepEntry.cookedWeight}
               onChange={(e) => handleCookedWeightChange(e.target.value)}
-              className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-              placeholder="4.5"
+              className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 ${
+                newPrepEntry.autoCalculate ? 'bg-green-50 border-green-300' : ''
+              }`}
+              placeholder={newPrepEntry.autoCalculate ? "Auto-calculated" : "Enter cooked weight"}
+              readOnly={newPrepEntry.autoCalculate && !!newPrepEntry.recipeYield}
               required
             />
           </div>
@@ -472,50 +599,99 @@ const EnhancedPrepLog = ({
             <label className="block text-sm font-medium mb-1">
               Actual Yield %
             </label>
-            <div className="p-2 border rounded bg-gray-100">
+            <div className={`p-2 border rounded ${
+              newPrepEntry.actualYield && newPrepEntry.recipeYield
+                ? Math.abs(parseFloat(newPrepEntry.actualYield) - parseFloat(newPrepEntry.recipeYield)) > 5
+                  ? 'bg-orange-50 border-orange-300'
+                  : 'bg-gray-100'
+                : 'bg-gray-100'
+            }`}>
               {newPrepEntry.actualYield || '-'}%
-              {newPrepEntry.dishName && getRecipeMetadata(newPrepEntry.dishName)?.yield && (
-                <span className="text-xs text-gray-600 ml-2">
-                  (Expected: {getRecipeMetadata(newPrepEntry.dishName).yield}%)
+              {newPrepEntry.dishName && newPrepEntry.recipeYield && newPrepEntry.actualYield && (
+                <span className={`text-xs ml-2 ${
+                  Math.abs(parseFloat(newPrepEntry.actualYield) - parseFloat(newPrepEntry.recipeYield)) > 5
+                    ? 'text-orange-600'
+                    : 'text-gray-600'
+                }`}>
+                  (Expected: {newPrepEntry.recipeYield}%)
                 </span>
               )}
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium mb-1">Container Size</label>
             <input
               type="text"
               value={newPrepEntry.containerSize}
-              className="w-full p-2 border rounded bg-gray-100"
-              readOnly
+              onChange={(e) => setNewPrepEntry(prev => ({ ...prev, containerSize: e.target.value }))}
+              className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+              placeholder="From recipe"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-1">Portion Size (g)</label>
             <input
-              type="text"
+              type="number"
               value={newPrepEntry.portionSize}
               onChange={(e) => {
                 setNewPrepEntry(prev => ({ ...prev, portionSize: e.target.value }));
                 // Recalculate portions if cooked weight exists
-                if (newPrepEntry.cookedWeight) {
-                  handleCookedWeightChange(newPrepEntry.cookedWeight);
+                if (newPrepEntry.cookedWeight && e.target.value) {
+                  const cookedGrams = parseFloat(newPrepEntry.cookedWeight) * 1000;
+                  const portions = Math.floor(cookedGrams / parseFloat(e.target.value));
+                  const portionsPerKg = portions / parseFloat(newPrepEntry.cookedWeight);
+                  setNewPrepEntry(prev => ({
+                    ...prev,
+                    totalPortions: portions.toString(),
+                    portionsPerKg: portionsPerKg.toFixed(1)
+                  }));
                 }
               }}
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+              placeholder="160"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Total Portions</label>
+            <label className="block text-sm font-medium mb-1">Portions/kg</label>
+            <input
+              type="number"
+              step="0.1"
+              value={newPrepEntry.portionsPerKg}
+              onChange={(e) => {
+                setNewPrepEntry(prev => ({ ...prev, portionsPerKg: e.target.value }));
+                // Recalculate total portions
+                if (newPrepEntry.cookedWeight && e.target.value) {
+                  const portions = Math.floor(parseFloat(newPrepEntry.cookedWeight) * parseFloat(e.target.value));
+                  setNewPrepEntry(prev => ({ ...prev, totalPortions: portions.toString() }));
+                }
+              }}
+              className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+              placeholder="From recipe"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Total Portions
+              {newPrepEntry.autoCalculate && (
+                <span className="text-xs text-green-600 ml-2">
+                  <Calculator className="inline" size={12} /> Auto
+                </span>
+              )}
+            </label>
             <input
               type="text"
               value={newPrepEntry.totalPortions}
-              className="w-full p-2 border rounded bg-gray-100 font-bold text-green-600"
+              className={`w-full p-2 border rounded font-bold ${
+                newPrepEntry.autoCalculate
+                  ? 'bg-green-50 text-green-600 border-green-300'
+                  : 'bg-gray-50 text-gray-600'
+              }`}
               readOnly
             />
           </div>
@@ -618,6 +794,7 @@ const EnhancedPrepLog = ({
                   <th className="px-4 py-2 text-left">Age</th>
                   <th className="px-4 py-2 text-left">Cost</th>
                   <th className="px-4 py-2 text-left">Status</th>
+                  <th className="px-4 py-2 text-left">Mode</th>
                   <th className="px-4 py-2 text-left">Actions</th>
                 </tr>
               </thead>
@@ -691,6 +868,15 @@ const EnhancedPrepLog = ({
                           <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">Dispatched</span>
                         ) : (
                           <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Ready</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2">
+                        {prep.autoCalculated ? (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                            <Calculator size={12} className="inline" /> Auto
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs">Manual</span>
                         )}
                       </td>
                       <td className="px-4 py-2">

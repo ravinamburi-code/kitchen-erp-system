@@ -10,6 +10,7 @@ import {
 // ADD THESE TWO LINES:
 import EnhancedRecipeBank from './EnhancedRecipeBank';
 import EnhancedPrepLog from './EnhancedPrepLog';
+import EnhancedDispatch from './EnhancedDispatch';
 
 const KitchenERP = () => {
 
@@ -35,6 +36,9 @@ const KitchenERP = () => {
     }
   };
 
+
+
+
   // Save to database function
   const saveToDatabase = async (table, data) => {
     try {
@@ -49,101 +53,84 @@ const KitchenERP = () => {
   };
 
 
+  // Instead of hardcoded recipes, start with empty array
+  const [recipes, setRecipes] = useState([]);
 
-  // Complete recipes from PDF
-  const [recipes, setRecipes] = useState(() => loadFromStorage('recipes', [
-    // Salan (2KG recipe converted to per 1kg)
-    { id: 1, dishName: 'Salan', ingredient: 'Peanuts', quantityPer1kg: 0.25, unit: 'kg' },
-    { id: 2, dishName: 'Salan', ingredient: 'Coconut Dry', quantityPer1kg: 0.25, unit: 'kg' },
-    { id: 3, dishName: 'Salan', ingredient: 'Fried Onions', quantityPer1kg: 0.2, unit: 'kg' },
-    { id: 4, dishName: 'Salan', ingredient: 'Sesame Seeds', quantityPer1kg: 0.125, unit: 'kg' },
-    { id: 5, dishName: 'Salan', ingredient: 'Chilli Powder', quantityPer1kg: 0.025, unit: 'kg' },
-    { id: 6, dishName: 'Salan', ingredient: 'Turmeric Powder Natco', quantityPer1kg: 0.01, unit: 'kg' },
-    { id: 7, dishName: 'Salan', ingredient: 'Coriander Powder', quantityPer1kg: 0.02, unit: 'kg' },
-    { id: 8, dishName: 'Salan', ingredient: 'Salt', quantityPer1kg: 0.005, unit: 'kg' },
-    { id: 9, dishName: 'Salan', ingredient: 'Tomato Puree', quantityPer1kg: 0.5, unit: 'kg' },
-    { id: 10, dishName: 'Salan', ingredient: 'Vegetable Oil Rapeseed', quantityPer1kg: 0.075, unit: 'litre' },
-
-    // Donne Biryani Lamb (converted to per 1kg)
-    { id: 11, dishName: 'Donne Biryani Lamb', ingredient: 'Cooking Onion', quantityPer1kg: 0.05, unit: 'kg' },
-    { id: 12, dishName: 'Donne Biryani Lamb', ingredient: 'Black Pepper', quantityPer1kg: 0.005, unit: 'kg' },
-    { id: 13, dishName: 'Donne Biryani Lamb', ingredient: 'Green Cardamom', quantityPer1kg: 0.002, unit: 'kg' },
-    { id: 14, dishName: 'Donne Biryani Lamb', ingredient: 'Mint Fresh', quantityPer1kg: 0.5, unit: 'bunch' },
-    { id: 15, dishName: 'Donne Biryani Lamb', ingredient: 'Coriander Fresh', quantityPer1kg: 0.25, unit: 'bunch' },
-    { id: 16, dishName: 'Donne Biryani Lamb', ingredient: 'Green Chillies', quantityPer1kg: 0.025, unit: 'kg' },
-    { id: 17, dishName: 'Donne Biryani Lamb', ingredient: 'Lamb Meat', quantityPer1kg: 1.0, unit: 'kg' },
-    { id: 18, dishName: 'Donne Biryani Lamb', ingredient: 'Chitti Muthayalu Rice', quantityPer1kg: 1.0, unit: 'kg' },
-    { id: 19, dishName: 'Donne Biryani Lamb', ingredient: 'Vegetable Oil Rapeseed', quantityPer1kg: 0.02, unit: 'litre' },
-    { id: 20, dishName: 'Donne Biryani Lamb', ingredient: 'Ghee Butter Heera', quantityPer1kg: 0.02, unit: 'kg' },
-    { id: 21, dishName: 'Donne Biryani Lamb', ingredient: 'Ginger-Garlic Paste', quantityPer1kg: 0.045, unit: 'kg' },
-    { id: 22, dishName: 'Donne Biryani Lamb', ingredient: 'Natural Yogurt', quantityPer1kg: 0.15, unit: 'kg' },
-
-    // Prawns Pulav (converted to per 1kg)
-    { id: 23, dishName: 'Prawns Pulav', ingredient: 'Raw Prawns', quantityPer1kg: 0.875, unit: 'kg' },
-    { id: 24, dishName: 'Prawns Pulav', ingredient: 'Mint Fresh', quantityPer1kg: 0.5, unit: 'bunch' },
-    { id: 25, dishName: 'Prawns Pulav', ingredient: 'Coriander Fresh', quantityPer1kg: 1, unit: 'bunch' },
-    { id: 26, dishName: 'Prawns Pulav', ingredient: 'Ginger-Garlic Paste', quantityPer1kg: 0.1, unit: 'kg' },
-    { id: 27, dishName: 'Prawns Pulav', ingredient: 'Green Chillies', quantityPer1kg: 0.018, unit: 'kg' },
-    { id: 28, dishName: 'Prawns Pulav', ingredient: 'Cashew Nuts', quantityPer1kg: 0.03, unit: 'kg' },
-    { id: 29, dishName: 'Prawns Pulav', ingredient: 'Salt', quantityPer1kg: 0.005, unit: 'kg' },
-    { id: 30, dishName: 'Prawns Pulav', ingredient: 'Vegetable Oil Rapeseed', quantityPer1kg: 0.037, unit: 'litre' },
-    { id: 31, dishName: 'Prawns Pulav', ingredient: 'Ghee Butter Heera', quantityPer1kg: 0.037, unit: 'kg' },
-    { id: 32, dishName: 'Prawns Pulav', ingredient: 'Cooking Onion', quantityPer1kg: 0.25, unit: 'kg' },
-    { id: 33, dishName: 'Prawns Pulav', ingredient: 'Salad Tomatoes', quantityPer1kg: 0.375, unit: 'kg' },
-    { id: 34, dishName: 'Prawns Pulav', ingredient: 'Turmeric Powder Natco', quantityPer1kg: 0.006, unit: 'kg' },
-    { id: 35, dishName: 'Prawns Pulav', ingredient: 'Chitti Muthayalu Rice', quantityPer1kg: 1.0, unit: 'kg' },
-
-    // Chicken Pakora (5kg recipe converted to per 1kg)
-    { id: 36, dishName: 'Chicken Pakora', ingredient: 'Boneless Chicken', quantityPer1kg: 1.0, unit: 'kg' },
-    { id: 37, dishName: 'Chicken Pakora', ingredient: 'Vegetable Oil Rapeseed', quantityPer1kg: 0.03, unit: 'litre' },
-    { id: 38, dishName: 'Chicken Pakora', ingredient: 'Chilli Powder', quantityPer1kg: 0.01, unit: 'kg' },
-    { id: 39, dishName: 'Chicken Pakora', ingredient: 'Ginger-Garlic Paste', quantityPer1kg: 0.01, unit: 'kg' },
-    { id: 40, dishName: 'Chicken Pakora', ingredient: 'Garam Masala Natco', quantityPer1kg: 0.006, unit: 'kg' },
-    { id: 41, dishName: 'Chicken Pakora', ingredient: 'Eggs', quantityPer1kg: 1, unit: 'pieces' },
-    { id: 42, dishName: 'Chicken Pakora', ingredient: 'Mint Fresh', quantityPer1kg: 0.2, unit: 'bunch' },
-    { id: 43, dishName: 'Chicken Pakora', ingredient: 'Coriander Fresh', quantityPer1kg: 0.2, unit: 'bunch' },
-    { id: 44, dishName: 'Chicken Pakora', ingredient: 'Kasoori Methi', quantityPer1kg: 0.003, unit: 'kg' },
-    { id: 45, dishName: 'Chicken Pakora', ingredient: 'Salt', quantityPer1kg: 0.009, unit: 'kg' },
-    { id: 46, dishName: 'Chicken Pakora', ingredient: 'Lemon Juice', quantityPer1kg: 0.01, unit: 'litre' },
-    { id: 47, dishName: 'Chicken Pakora', ingredient: 'Gram Flour KTC', quantityPer1kg: 0.2, unit: 'kg' },
-    { id: 48, dishName: 'Chicken Pakora', ingredient: 'Rice Flour', quantityPer1kg: 0.1, unit: 'kg' },
-    { id: 49, dishName: 'Chicken Pakora', ingredient: 'All Purpose Flour', quantityPer1kg: 0.1, unit: 'kg' },
-
-    // Chicken Curry (5kg recipe converted to per 1kg)
-    { id: 50, dishName: 'Chicken Curry', ingredient: 'Boneless Chicken', quantityPer1kg: 1.0, unit: 'kg' },
-    { id: 51, dishName: 'Chicken Curry', ingredient: 'Cooking Onion', quantityPer1kg: 0.2, unit: 'kg' },
-    { id: 52, dishName: 'Chicken Curry', ingredient: 'Salad Tomatoes', quantityPer1kg: 0.15, unit: 'kg' },
-    { id: 53, dishName: 'Chicken Curry', ingredient: 'Cashew Nuts', quantityPer1kg: 0.01, unit: 'kg' },
-    { id: 54, dishName: 'Chicken Curry', ingredient: 'Coconut Dry', quantityPer1kg: 0.01, unit: 'kg' },
-    { id: 55, dishName: 'Chicken Curry', ingredient: 'Kasoori Methi', quantityPer1kg: 0.007, unit: 'kg' },
-    { id: 56, dishName: 'Chicken Curry', ingredient: 'Green Chillies', quantityPer1kg: 0.006, unit: 'kg' },
-    { id: 57, dishName: 'Chicken Curry', ingredient: 'Salt', quantityPer1kg: 0.005, unit: 'kg' },
-    { id: 58, dishName: 'Chicken Curry', ingredient: 'Curry Leaves', quantityPer1kg: 0.2, unit: 'bunch' },
-    { id: 59, dishName: 'Chicken Curry', ingredient: 'Ginger-Garlic Paste', quantityPer1kg: 0.024, unit: 'kg' },
-    { id: 60, dishName: 'Chicken Curry', ingredient: 'Vegetable Oil Rapeseed', quantityPer1kg: 0.024, unit: 'litre' },
-    { id: 61, dishName: 'Chicken Curry', ingredient: 'Chilli Powder', quantityPer1kg: 0.006, unit: 'kg' },
-    { id: 62, dishName: 'Chicken Curry', ingredient: 'Coriander Powder', quantityPer1kg: 0.004, unit: 'kg' },
-    { id: 63, dishName: 'Chicken Curry', ingredient: 'Garam Masala Natco', quantityPer1kg: 0.004, unit: 'kg' },
-    { id: 64, dishName: 'Chicken Curry', ingredient: 'Turmeric Powder Natco', quantityPer1kg: 0.003, unit: 'kg' },
-    { id: 65, dishName: 'Chicken Curry', ingredient: 'Lemon Juice', quantityPer1kg: 0.001, unit: 'litre' },
-
-    // Lamb Curry (3kg recipe converted to per 1kg)
-    { id: 66, dishName: 'Lamb Curry', ingredient: 'Lamb Meat', quantityPer1kg: 1.0, unit: 'kg' },
-    { id: 67, dishName: 'Lamb Curry', ingredient: 'Cooking Onion', quantityPer1kg: 0.2, unit: 'kg' },
-    { id: 68, dishName: 'Lamb Curry', ingredient: 'Tomato Puree', quantityPer1kg: 0.33, unit: 'kg' },
-    { id: 69, dishName: 'Lamb Curry', ingredient: 'Coconut Dry', quantityPer1kg: 0.007, unit: 'kg' },
-    { id: 70, dishName: 'Lamb Curry', ingredient: 'Kasoori Methi', quantityPer1kg: 0.001, unit: 'kg' },
-    { id: 71, dishName: 'Lamb Curry', ingredient: 'Green Chillies', quantityPer1kg: 0.01, unit: 'kg' },
-    { id: 72, dishName: 'Lamb Curry', ingredient: 'Salt', quantityPer1kg: 0.005, unit: 'kg' },
-    { id: 73, dishName: 'Lamb Curry', ingredient: 'Ginger-Garlic Paste', quantityPer1kg: 0.033, unit: 'kg' },
-    { id: 74, dishName: 'Lamb Curry', ingredient: 'Vegetable Oil Rapeseed', quantityPer1kg: 0.02, unit: 'litre' },
-    { id: 75, dishName: 'Lamb Curry', ingredient: 'Chilli Powder', quantityPer1kg: 0.01, unit: 'kg' },
-    { id: 76, dishName: 'Lamb Curry', ingredient: 'Coriander Powder', quantityPer1kg: 0.007, unit: 'kg' },
-    { id: 77, dishName: 'Lamb Curry', ingredient: 'Garam Masala Natco', quantityPer1kg: 0.008, unit: 'kg' },
-    { id: 78, dishName: 'Lamb Curry', ingredient: 'Turmeric Powder Natco', quantityPer1kg: 0.003, unit: 'kg' }
-  ]));
+  const [allDishNames, setAllDishNames] = useState([]);
 
 
+
+  // ADD this entire useEffect after your recipes loading useEffect:
+  useEffect(() => {
+    const loadAllDishNames = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('recipe_bank')
+          .select('dish_name')
+          .order('dish_name');
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          const dishNames = data.map(d => d.dish_name).filter(name => name).sort();
+          setAllDishNames(dishNames);
+          localStorage.setItem('allDishNames', JSON.stringify(dishNames));
+          console.log('Loaded', dishNames.length, 'dish names from database');
+        }
+      } catch (error) {
+        console.error('Error loading dish names:', error);
+      }
+    };
+
+    loadAllDishNames();
+  }, []);
+
+  // Load recipes from database
+  useEffect(() => {
+    const loadRecipesFromDatabase = async () => {
+      try {
+        console.log('Loading recipes from Supabase...');
+        const { data, error } = await supabase
+          .from('recipe_bank')
+          .select('*')
+          .order('dish_name');
+
+        if (error) throw error;
+
+        if (data) {
+          // Convert database format to app format
+          const formattedRecipes = [];
+          let recipeId = 1;
+
+          data.forEach(recipe => {
+            if (recipe.ingredients && recipe.ingredients !== '[]') {
+              const ingredients = JSON.parse(recipe.ingredients);
+              ingredients.forEach(ing => {
+                formattedRecipes.push({
+                  id: recipeId++,
+                  dishName: recipe.dish_name,
+                  ingredient: ing.item,
+                  quantityPer1kg: ing.quantity,
+                  unit: ing.unit
+                });
+              });
+            }
+          });
+
+          setRecipes(formattedRecipes);
+          console.log('Loaded', formattedRecipes.length, 'recipe ingredients from', data.length, 'dishes');
+
+          // Also store dish names for dropdowns
+          const dishNames = data.map(d => d.dish_name).sort();
+          localStorage.setItem('allDishNames', JSON.stringify(dishNames));
+        }
+      } catch (error) {
+        console.error('Error loading recipes:', error);
+      }
+    };
+
+    loadRecipesFromDatabase();
+  }, []);
 
 
 
@@ -156,6 +143,7 @@ const [dispatch, setDispatch] = useState(() => loadFromStorage('dispatch', []));
 
 // ✅ CLEAR SALES
 const [sales, setSales] = useState(() => loadFromStorage('sales', []));
+
 
 
 // 4. AUTO-LOGIN CHECK (same as before)
@@ -377,6 +365,29 @@ useEffect(() => {
 
   loadInitialData();
 }, []); // Empty array = runs once on mount
+
+
+
+// REPLACE the entire getAllDishNames function with:
+const getAllDishNames = () => {
+  if (allDishNames && allDishNames.length > 0) {
+    return allDishNames;
+  }
+
+  const stored = localStorage.getItem('allDishNames');
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      if (parsed && parsed.length > 0) {
+        return parsed;
+      }
+    } catch (e) {
+      console.error('Error parsing stored dish names:', e);
+    }
+  }
+
+  return [];
+};
 
   // Add state for waste tracking
   const [wasteLog, setWasteLog] = useState(() => loadFromStorage('wasteLog', []));
@@ -619,10 +630,8 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
   };
 
   const getRecipeDishes = () => {
-  // Get dishes from recipes that have metadata
-  const metadata = JSON.parse(localStorage.getItem('recipeMetadata') || '{}');
-  return Object.keys(metadata).sort();
-};
+    return getAllDishNames();
+  };
 
   // Helper: Get menu by location
   const getMenuByLocation = (location) => {
@@ -633,13 +642,6 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
   };
 
 
-  const [newDispatchEntry, setNewDispatchEntry] = useState({
-    dishName: '',
-    totalCooked: '',
-    easthamSent: '',
-    bethnalSent: '',
-    coldRoomStock: ''
-  });
 
   const [newSalesEntry, setNewSalesEntry] = useState({
     location: '',
@@ -773,7 +775,7 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
       const dishes = [...new Set(allDishes)];
 
       if (dishes.length === 0) {
-        const recipeDishes = [...new Set(recipes.map(r => r.dishName))].slice(0, 3);
+        const recipeDishes = getAllDishNames().slice(0, 3);
         return recipeDishes.map(dish => ({
           dish,
           expectedDemand: 20,
@@ -874,34 +876,7 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
         status: 'fresh' // ADD THIS - fresh/aging/old
       };
 
-      // Convert to database format
-      const dbEntry = {
-        dish_name: newEntry.dishName,
-        quantity_cooked: newEntry.quantityCooked,
-        prepared_by: newEntry.preparedBy,
-        portion_size: newEntry.portionSize,
-        container_size: newEntry.containerSize,
-        total_portions: newEntry.totalPortions,
-        processed: false,
-        timestamp: newEntry.timestamp, // ADD THIS to database
-        prep_time: newEntry.prepTime,
-        status: 'fresh'
-      };
 
-      // Save to database
-      await saveToDatabase('prep_log', dbEntry);
-
-      // Keep existing local state update
-      setPrepLog(prev => [...prev, newEntry]);
-
-      // Reset form
-      setNewPrepEntry({
-        dishName: '',
-        quantityCooked: '',
-        containerSize: '500ml',
-        portionSize: 160,
-        preparedBy: newPrepEntry.preparedBy // Keep chef name
-      });
 
       // Success message with portion config info
       const config = portionConfig[newEntry.dishName] || portionConfig['default'];
@@ -911,119 +886,9 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
     }
   };
 
-// Find this function in your code and replace it with this fixed version:
 
-const handleDispatchSubmit = async () => {  // ← Make sure 'async' is here!
-  if (newDispatchEntry.dishName && newDispatchEntry.totalCooked) {
-    const eastham = parseInt(newDispatchEntry.easthamSent) || 0;
-    const bethnal = parseInt(newDispatchEntry.bethnalSent) || 0;
-    const coldRoom = parseInt(newDispatchEntry.coldRoomStock) || 0;
-    const total = parseInt(newDispatchEntry.totalCooked);
 
-    // Keep your validation
-    if (eastham + bethnal + coldRoom !== total) {
-      alert(`❌ Invalid Distribution! Total: ${total}, but sum is ${eastham + bethnal + coldRoom}`);
-      return;
-    }
 
-    const newEntry = {
-      id: dispatch.length > 0 ? Math.max(...dispatch.map(d => d.id)) + 1 : 1,
-      date: new Date().toISOString().split('T')[0],
-      dishName: newDispatchEntry.dishName,
-      totalCooked: total,
-      easthamSent: eastham,
-      bethnalSent: bethnal,
-      coldRoomStock: coldRoom
-    };
-
-    // ⭐ ADD DATABASE SAVE
-    const dbEntry = {
-      dish_name: newEntry.dishName,
-      total_cooked: newEntry.totalCooked,
-      eastham_sent: newEntry.easthamSent,
-      bethnal_sent: newEntry.bethnalSent,
-      cold_room_stock: newEntry.coldRoomStock
-    };
-
-    await saveToDatabase('dispatch', dbEntry);  // ← This await is now inside an async function
-    // ⭐ END DATABASE SAVE
-
-    setDispatch(prev => [...prev, newEntry]);
-
-    // AUTO-CREATE SALES ENTRIES FOR EACH LOCATION
-    if (eastham > 0) {
-      const easthamSalesEntry = {
-        id: sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 100 : 100,
-        dishName: newDispatchEntry.dishName,
-        location: 'Eastham',
-        receivedPortions: eastham,
-        remainingPortions: eastham,
-        date: new Date().toISOString().split('T')[0],
-        time: new Date().toLocaleTimeString(),
-        updatedBy: 'Auto-Created from Dispatch',
-        autoCreated: true
-      };
-
-      // ⭐ SAVE EASTHAM SALES TO DATABASE
-      await saveToDatabase('sales', {
-        dish_name: easthamSalesEntry.dishName,
-        location: easthamSalesEntry.location,
-        received_portions: easthamSalesEntry.receivedPortions,
-        remaining_portions: easthamSalesEntry.remainingPortions,
-        updated_by: easthamSalesEntry.updatedBy,
-        auto_created: true
-      });
-
-      setSales(prev => [...prev, easthamSalesEntry]);
-    }
-
-    if (bethnal > 0) {
-      const bethnalSalesEntry = {
-        id: sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 200 : 200,
-        dishName: newDispatchEntry.dishName,
-        location: 'Bethnal Green',
-        receivedPortions: bethnal,
-        remainingPortions: bethnal,
-        date: new Date().toISOString().split('T')[0],
-        time: new Date().toLocaleTimeString(),
-        updatedBy: 'Auto-Created from Dispatch',
-        autoCreated: true
-      };
-
-      // ⭐ SAVE BETHNAL SALES TO DATABASE
-      await saveToDatabase('sales', {
-        dish_name: bethnalSalesEntry.dishName,
-        location: bethnalSalesEntry.location,
-        received_portions: bethnalSalesEntry.receivedPortions,
-        remaining_portions: bethnalSalesEntry.remainingPortions,
-        updated_by: bethnalSalesEntry.updatedBy,
-        auto_created: true
-      });
-
-      setSales(prev => [...prev, bethnalSalesEntry]);
-    }
-
-    // Rest of your existing code...
-    setPrepLog(prev => prev.map(p => {
-      if (p.dishName === newDispatchEntry.dishName && !p.processed) {
-        return { ...p, processed: true };
-      }
-      return p;
-    }));
-
-    setNewDispatchEntry({
-      dishName: '',
-      totalCooked: '',
-      easthamSent: '',
-      bethnalSent: '',
-      coldRoomStock: ''
-    });
-
-    alert(`✅ Successfully dispatched ${total} portions of ${newDispatchEntry.dishName}!\n\n📍 Eastham: ${eastham}p (Sales entry auto-created)\n📍 Bethnal Green: ${bethnal}p (Sales entry auto-created)\n🏪 Cold Room: ${coldRoom}p`);
-  } else {
-    alert('Please fill in Dish Name and Total Available portions');
-  }
-};
 
 
 // 2. UPDATED LOGIN HANDLER WITH SUPABASE
@@ -1203,20 +1068,6 @@ const handleDeletePrepItem = async (prepId) => {
     }
   };
 
-  const selectPrepItem = (prepItem) => {
-    setNewDispatchEntry({
-      dishName: prepItem.dishName,
-      totalCooked: prepItem.totalPortions.toString(),
-      easthamSent: Math.ceil(prepItem.totalPortions * 0.4).toString(), // Auto-suggest 40% to Eastham
-      bethnalSent: Math.ceil(prepItem.totalPortions * 0.35).toString(), // Auto-suggest 35% to Bethnal Green
-      coldRoomStock: Math.floor(prepItem.totalPortions * 0.25).toString() // Auto-suggest 25% to Cold Room
-    });
-
-    // Scroll to dispatch form
-    document.querySelector('.dispatch-form')?.scrollIntoView({ behavior: 'smooth' });
-
-    alert(`✅ Auto-filled dispatch form for ${prepItem.dishName}!\n\n📊 Suggested Distribution:\n• Eastham: ${Math.ceil(prepItem.totalPortions * 0.4)}p\n• Bethnal Green: ${Math.ceil(prepItem.totalPortions * 0.35)}p\n• Cold Room: ${Math.floor(prepItem.totalPortions * 0.25)}p\n\n👆 You can adjust these numbers before dispatching!`);
-  };
 
   // Add waste tracking function
   const handleWasteSubmit = async () => {  // ← Add async
@@ -1712,8 +1563,10 @@ const UserManagement = () => {
           <div className="bg-white border rounded-lg p-4">
             <h3 className="text-lg font-semibold mb-4">Recipe Cost Summary</h3>
             <div className="space-y-3">
-              {[...new Set(recipes.map(r => r.dishName))].map(dish => (
-                <div key={dish} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+            {getAllDishNames()
+.filter(dish => recipes.some(r => r.dishName === dish)) // Only show dishes with recipes
+.map(dish => (
+  <div key={dish} className="flex justify-between items-center p-3 bg-gray-50 rounded">
                   <span className="font-medium">{dish}</span>
                   <div className="text-right">
                     <p className="font-bold text-green-600">£{calculateDishCost(dish).toFixed(2)}/kg</p>
@@ -2118,15 +1971,15 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
             <div>
               <label className="block text-sm font-medium mb-1">Dish Name *</label>
               <select
-                value={newWasteEntry.dishName}
-                onChange={(e) => setNewWasteEntry(prev => ({ ...prev, dishName: e.target.value }))}
-                className="w-full p-2 border rounded"
-              >
-                <option value="">Select Dish</option>
-                {[...new Set(recipes.map(r => r.dishName))].map(dish => (
-                  <option key={dish} value={dish}>{dish}</option>
-                ))}
-              </select>
+    value={newWasteEntry.dishName}
+    onChange={(e) => setNewWasteEntry(prev => ({ ...prev, dishName: e.target.value }))}
+    className="w-full p-2 border rounded"
+  >
+    <option value="">Select Dish</option>
+    {getAllDishNames().map(dish => (
+      <option key={dish} value={dish}>{dish}</option>
+    ))}
+  </select>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Location *</label>
@@ -2656,285 +2509,31 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
 
 
           {activeTab === 'prep' && (
-            <EnhancedPrepLog
-              prepLog={prepLog}
-              setPrepLog={setPrepLog}
-              recipes={recipes}
-              inventory={inventory}
-              sales={sales}
-              calculateDishCost={calculateDishCost}
-              checkIngredientAvailability={checkIngredientAvailability}
-            />
-          )}
+        <EnhancedPrepLog
+          prepLog={prepLog}
+          setPrepLog={setPrepLog}
+          recipes={recipes}
+          inventory={inventory}
+          sales={sales}
+          calculateDishCost={calculateDishCost}
+          checkIngredientAvailability={checkIngredientAvailability}
+          getAllDishNames={getAllDishNames}  // ADD THIS LINE
+        />
+      )}
 
-
-
-    {activeTab === 'dispatch' && (
-      <div className="p-6">
-        <h2 className="text-2xl font-bold mb-6 flex items-center">
-          <Truck className="mr-2" /> Dispatch & Cold Room Management
-        </h2>
-
-        {/* Quick Tutorial */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <h3 className="text-lg font-semibold text-blue-800 mb-3">🎯 How Dispatch Works (3 Easy Steps)</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-            <div className="bg-white p-3 rounded">
-              <div className="font-medium text-blue-700 mb-2">1️⃣ CLICK PREP ITEM</div>
-              <div className="text-gray-700">
-                👆 Click any green card below to auto-fill the dispatch form<br/>
-                ✅ Smart distribution suggestions included<br/>
-                ✅ All prep data filled automatically
-              </div>
-            </div>
-            <div className="bg-white p-3 rounded">
-              <div className="font-medium text-orange-700 mb-2">2️⃣ ADJUST PORTIONS</div>
-              <div className="text-gray-700">
-                📝 Modify Eastham/Bethnal Green portions as needed<br/>
-                🔄 Cold Room stock auto-calculates<br/>
-                ✅ Live total validation
-              </div>
-            </div>
-            <div className="bg-white p-3 rounded">
-              <div className="font-medium text-green-700 mb-2">3️⃣ DISPATCH</div>
-              <div className="text-gray-700">
-                🚀 Click "Dispatch & Create Sales"<br/>
-                ✅ Sales entries auto-created for both locations<br/>
-                ✅ Prep item marked as processed
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Select from Prep Log */}
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-          <h3 className="text-lg font-semibold text-green-800">📋 Ready for Dispatch (From Today's Prep)</h3>
-          <p className="text-sm text-green-700 mb-3">👆 Click any item below to auto-fill the dispatch form with smart distribution suggestions</p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {prepLog.filter(prep => !prep.processed).length > 0 ?
-              prepLog.filter(prep => !prep.processed).map(prep => (
-                <div
-                  key={`prep-${prep.id}`}
-                  className="bg-white rounded-lg p-4 border-2 border-green-200 cursor-pointer hover:border-green-400 hover:shadow-md transform hover:scale-105 transition-all duration-200"
-                  onClick={() => selectPrepItem(prep)}
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-bold text-green-800">{prep.dishName}</span>
-                    <span className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
-                      {prep.totalPortions}p ready
-                    </span>
-                  </div>
-                  <div className="text-xs text-gray-600 mb-2">
-                    📊 {prep.quantityCooked}kg | {prep.containerSize} | by {prep.preparedBy}
-                  </div>
-                  <div className="text-xs text-blue-600 font-medium bg-blue-50 p-2 rounded text-center">
-                    👆 CLICK HERE to auto-fill dispatch form
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Will suggest: ~{Math.ceil(prep.totalPortions * 0.4)}p Eastham, ~{Math.ceil(prep.totalPortions * 0.35)}p Bethnal, ~{Math.floor(prep.totalPortions * 0.25)}p Cold Room
-                  </div>
-                </div>
-              ))
-              :
-              <div className="col-span-3">
-                <div className="text-center py-8">
-                  <ChefHat size={48} className="mx-auto mb-4 text-gray-400" />
-                  <p className="text-green-700 font-medium">No prep items ready for dispatch</p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Go to <span className="font-medium">"Prep Log"</span> tab to add new cooked items first.
-                  </p>
-                </div>
-              </div>
-            }
-          </div>
-
-          {/* Summary */}
-          {prepLog.filter(prep => !prep.processed).length > 0 && (
-            <div className="mt-4 p-3 bg-white rounded border border-green-200">
-              <div className="text-sm text-green-800">
-                <strong>📊 Ready to Dispatch Summary:</strong>
-                <span className="ml-2">
-                  {prepLog.filter(prep => !prep.processed).length} items |
-                  {prepLog.filter(prep => !prep.processed).reduce((sum, prep) => sum + prep.totalPortions, 0)} total portions |
-                  £{prepLog.filter(prep => !prep.processed).reduce((sum, prep) => sum + (calculateDishCost(prep.dishName) * prep.quantityCooked), 0).toFixed(2)} total value
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Add New Dispatch Entry */}
-        <div className="dispatch-form bg-white border rounded-lg p-6 mb-6">
-          <h3 className="text-lg font-semibold mb-4">📦 Dispatch Form - Auto-filled from Prep Selection</h3>
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Dish Name *</label>
-              <input
-                type="text"
-                value={newDispatchEntry.dishName}
-                onChange={(e) => setNewDispatchEntry(prev => ({ ...prev, dishName: e.target.value }))}
-                className="w-full p-2 border rounded bg-gray-50"
-                placeholder="Click prep item above to auto-fill"
-                readOnly
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1 whitespace-nowrap">
-                Total Available (portions) *
-              </label>
-              <input
-                type="number"
-                value={newDispatchEntry.totalCooked}
-                onChange={(e) => setNewDispatchEntry(prev => ({ ...prev, totalCooked: e.target.value }))}
-                className="w-full p-2 border rounded bg-gray-50"
-                placeholder="Auto-filled"
-                readOnly
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Eastham Sent</label>
-              <input
-                type="number"
-                value={newDispatchEntry.easthamSent}
-                onChange={(e) => {
-                  const eastham = parseInt(e.target.value) || 0;
-                  const bethnal = parseInt(newDispatchEntry.bethnalSent) || 0;
-                  const total = parseInt(newDispatchEntry.totalCooked) || 0;
-                  const coldRoom = Math.max(0, total - eastham - bethnal);
-                  setNewDispatchEntry(prev => ({
-                    ...prev,
-                    easthamSent: e.target.value,
-                    coldRoomStock: coldRoom.toString()
-                  }));
-                }}
-                className="w-full p-2 border-2 border-blue-300 rounded focus:border-blue-500"
-                placeholder="Adjust as needed"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Bethnal Green Sent</label>
-              <input
-                type="number"
-                value={newDispatchEntry.bethnalSent}
-                onChange={(e) => {
-                  const bethnal = parseInt(e.target.value) || 0;
-                  const eastham = parseInt(newDispatchEntry.easthamSent) || 0;
-                  const total = parseInt(newDispatchEntry.totalCooked) || 0;
-                  const coldRoom = Math.max(0, total - eastham - bethnal);
-                  setNewDispatchEntry(prev => ({
-                    ...prev,
-                    bethnalSent: e.target.value,
-                    coldRoomStock: coldRoom.toString()
-                  }));
-                }}
-                className="w-full p-2 border-2 border-green-300 rounded focus:border-green-500"
-                placeholder="Adjust as needed"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Cold Room Stock (auto)</label>
-              <input
-                type="number"
-                value={newDispatchEntry.coldRoomStock}
-                className="w-full p-2 border rounded bg-purple-50"
-                placeholder="Auto calculated"
-                readOnly
-              />
-              <div className="text-xs text-purple-600 mt-1">
-                Auto: Total - Eastham - Bethnal
-              </div>
-            </div>
-            <div className="flex items-end space-x-2">
-              <button
-                onClick={handleDispatchSubmit}
-                disabled={!newDispatchEntry.dishName || !newDispatchEntry.totalCooked}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                <Plus size={16} className="inline mr-1" />
-                Dispatch & Create Sales
-              </button>
-              <button
-                onClick={() => setNewDispatchEntry({
-                  dishName: '',
-                  totalCooked: '',
-                  easthamSent: '',
-                  bethnalSent: '',
-                  coldRoomStock: ''
-                })}
-                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-                title="Clear form"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          </div>
-
-          {/* Live Total Check */}
-          {newDispatchEntry.totalCooked && (newDispatchEntry.easthamSent || newDispatchEntry.bethnalSent || newDispatchEntry.coldRoomStock) && (
-            <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
-              <div className="text-sm">
-                <div className="flex justify-between items-center">
-                  <span>Distribution Check:</span>
-                  <span className={`font-bold ${
-                    (parseInt(newDispatchEntry.easthamSent) || 0) + (parseInt(newDispatchEntry.bethnalSent) || 0) + (parseInt(newDispatchEntry.coldRoomStock) || 0) === parseInt(newDispatchEntry.totalCooked)
-                    ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {(parseInt(newDispatchEntry.easthamSent) || 0) + (parseInt(newDispatchEntry.bethnalSent) || 0) + (parseInt(newDispatchEntry.coldRoomStock) || 0)} / {newDispatchEntry.totalCooked} portions
-                  </span>
-                </div>
-                {(parseInt(newDispatchEntry.easthamSent) || 0) + (parseInt(newDispatchEntry.bethnalSent) || 0) + (parseInt(newDispatchEntry.coldRoomStock) || 0) === parseInt(newDispatchEntry.totalCooked) ? (
-                  <div className="text-green-600 text-xs mt-1">✅ Perfect! Ready to dispatch</div>
-                ) : (
-                  <div className="text-red-600 text-xs mt-1">⚠️ Numbers don't add up - please adjust</div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Dispatch Summary Table */}
-        <div className="bg-white border rounded-lg">
-          <div className="p-4 border-b">
-            <h3 className="text-lg font-semibold">Today's Dispatch Summary</h3>
-          </div>
-          <div className="overflow-x-auto">
-            {dispatch.length > 0 ? (
-              <table className="min-w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left">Dish Name</th>
-                    <th className="px-4 py-2 text-left">Total Cooked</th>
-                    <th className="px-4 py-2 text-left">Eastham Sent</th>
-                    <th className="px-4 py-2 text-left">Bethnal Green Sent</th>
-                    <th className="px-4 py-2 text-left">Cold Room Stock</th>
-                    <th className="px-4 py-2 text-left">Total Dispatched</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {dispatch.map(item => (
-                    <tr key={item.id}>
-                      <td className="px-4 py-2 font-medium">{item.dishName}</td>
-                      <td className="px-4 py-2">{item.totalCooked}p</td>
-                      <td className="px-4 py-2 text-blue-600">{item.easthamSent}p</td>
-                      <td className="px-4 py-2 text-green-600">{item.bethnalSent}p</td>
-                      <td className="px-4 py-2 text-purple-600">{item.coldRoomStock}p</td>
-                      <td className="px-4 py-2 font-medium">{item.easthamSent + item.bethnalSent}p</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <div className="p-8 text-center">
-                <Truck size={48} className="mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-medium text-gray-600 mb-2">No Items Dispatched Today</h3>
-                <p className="text-gray-500">Dispatch entries will appear here when you send items to locations.</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    )}
+      {activeTab === 'dispatch' && (
+        <EnhancedDispatch
+          dispatch={dispatch}
+          setDispatch={setDispatch}
+          prepLog={prepLog}
+          setPrepLog={setPrepLog}
+          sales={sales}
+          setSales={setSales}
+          calculateDishCost={calculateDishCost}
+          getAllDishNames={getAllDishNames}
+          saveToDatabase={saveToDatabase}
+        />
+      )}
 
 
       {activeTab === 'sales' && (

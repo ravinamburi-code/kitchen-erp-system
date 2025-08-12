@@ -1,42 +1,242 @@
-// EnhancedPrepLog.js - Complete Working Version with Auto-Calculations
+// EnhancedPrepLog.js - UPDATED WITH FLEXIBLE EXPIRY DATE SYSTEM
 import React, { useState, useEffect } from 'react';
+import { supabase } from './supabaseClient';
 import {
   ChefHat, Plus, Calculator, AlertTriangle, CheckCircle,
-  TrendingUp, Clock, Package, Trash2, Info
+  TrendingUp, Clock, Package, Trash2, Info, Calendar, AlertCircle
 } from 'lucide-react';
 
 const EnhancedPrepLog = ({
-  prepLog = [],
-  setPrepLog = () => {},
-  recipes = [],
-  inventory = [],
-  sales = [],
-  calculateDishCost = () => 0,
-  checkIngredientAvailability = () => []
+  prepLog,
+  setPrepLog,
+  recipes,
+  inventory,
+  sales,
+  calculateDishCost,
+  checkIngredientAvailability,
+  getAllDishNames
 }) => {
-  // Get recipe metadata from localStorage
-  const getRecipeMetadata = (dishName) => {
+  // State for recipe bank data
+  const [recipeBank, setRecipeBank] = useState([]);
+  const [loadingRecipes, setLoadingRecipes] = useState(false);
+
+  // Generate batch number
+  const generateBatchNumber = () => {
+    const date = new Date();
+    const year = date.getFullYear().toString().slice(-2);
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const hour = date.getHours().toString().padStart(2, '0');
+    const minute = date.getMinutes().toString().padStart(2, '0');
+    const random = Math.floor(Math.random() * 100).toString().padStart(2, '0');
+    return `B${year}${month}${day}-${hour}${minute}-${random}`;
+  };
+
+  // Calculate expiry date based on days selected
+  const calculateExpiryDateFromDays = (prepDate, daysToAdd) => {
+    const date = new Date(prepDate);
+    date.setDate(date.getDate() + daysToAdd);
+    return date.toISOString();
+  };
+
+  // Get default expiry days based on dish type
+  const getDefaultExpiryDays = (dishName) => {
+    const expiryDays = {
+      'Biryani': 3,
+      'Curry': 4,
+      'Pakora': 2,
+      'Samosa': 2,
+      'Bhaji': 2,
+      'Salan': 4,
+      'Raitha': 3,
+      'default': 3
+    };
+
+    for (const [category, days] of Object.entries(expiryDays)) {
+      if (dishName.toLowerCase().includes(category.toLowerCase())) {
+        return days;
+      }
+    }
+    return expiryDays.default;
+  };
+
+  // Format date and time for display
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Format date for label printing
+  const formatDateForLabel = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  // Calculate time until expiry
+  const getExpiryStatus = (expiryDate) => {
+    if (!expiryDate) return { status: 'unknown', message: 'No expiry', color: 'gray' };
+
+    const now = new Date();
+    const expiry = new Date(expiryDate);
+    const hoursUntilExpiry = (expiry - now) / (1000 * 60 * 60);
+
+    if (hoursUntilExpiry < 0) {
+      return { status: 'expired', message: 'EXPIRED', color: 'red' };
+    } else if (hoursUntilExpiry < 24) {
+      return { status: 'urgent', message: `${Math.floor(hoursUntilExpiry)}h left`, color: 'orange' };
+    } else if (hoursUntilExpiry < 48) {
+      return { status: 'warning', message: `${Math.floor(hoursUntilExpiry / 24)}d left`, color: 'yellow' };
+    } else {
+      return { status: 'good', message: `${Math.floor(hoursUntilExpiry / 24)}d left`, color: 'green' };
+    }
+  };
+
+  // Load recipe bank data from Supabase on mount
+  useEffect(() => {
+    const loadRecipeBank = async () => {
+      try {
+        setLoadingRecipes(true);
+        const { data, error } = await supabase
+          .from('recipe_bank')
+          .select('*')
+          .order('dish_name');
+
+        if (error) throw error;
+
+        if (data) {
+          setRecipeBank(data);
+          console.log('Loaded recipe bank:', data.length, 'recipes');
+        }
+      } catch (error) {
+        console.error('Error loading recipe bank:', error);
+      } finally {
+        setLoadingRecipes(false);
+      }
+    };
+
+    loadRecipeBank();
+  }, []);
+
+  // Get recipe metadata from database (NOT localStorage)
+  const getRecipeMetadata = async (dishName) => {
     try {
-      const metadata = JSON.parse(localStorage.getItem('recipeMetadata') || '{}');
-      return metadata[dishName] || null;
+      // First check if we already have it in state
+      const cachedRecipe = recipeBank.find(r => r.dish_name === dishName);
+      if (cachedRecipe) {
+        // Parse the metadata if it exists
+        if (cachedRecipe.metadata) {
+          try {
+            return JSON.parse(cachedRecipe.metadata);
+          } catch (e) {
+            console.log('No metadata stored, using defaults');
+          }
+        }
+
+        // Return default structure based on dish type
+        const portionConfig = {
+          'Biryani': { portionsPerKg: 6, portionSize: 166, containerSize: '650ml', yield: 90 },
+          'Curry': { portionsPerKg: 10, portionSize: 100, containerSize: '500ml', yield: 85 },
+          'Pakora': { portionsPerKg: 12, portionSize: 83, containerSize: '12oz', yield: 75 },
+          'Samosa': { portionsPerKg: 15, portionSize: 66, containerSize: '8oz', yield: 95 },
+          'default': { portionsPerKg: 8, portionSize: 125, containerSize: '500ml', yield: 85 }
+        };
+
+        // Find matching config
+        let config = portionConfig.default;
+        for (const [category, settings] of Object.entries(portionConfig)) {
+          if (dishName.toLowerCase().includes(category.toLowerCase())) {
+            config = settings;
+            break;
+          }
+        }
+
+        return {
+          dishName: dishName,
+          rawWeight: 5,
+          cookedWeight: 4.5,
+          yield: config.yield,
+          containerSize: config.containerSize,
+          portionsPerKg: config.portionsPerKg,
+          portionSize: config.portionSize,
+          category: cachedRecipe.category || 'Main Course'
+        };
+      }
+
+      // If not in cache, fetch from database
+      const { data, error } = await supabase
+        .from('recipe_bank')
+        .select('*')
+        .eq('dish_name', dishName)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        // Update local cache
+        setRecipeBank(prev => {
+          const exists = prev.find(r => r.dish_name === dishName);
+          if (!exists) {
+            return [...prev, data];
+          }
+          return prev;
+        });
+
+        // Return metadata
+        if (data.metadata) {
+          try {
+            return JSON.parse(data.metadata);
+          } catch (e) {
+            console.log('Error parsing metadata');
+          }
+        }
+
+        // Return defaults based on category
+        const portionConfig = {
+          'Biryani': { portionsPerKg: 6, portionSize: 166, containerSize: '650ml', yield: 90 },
+          'Curry': { portionsPerKg: 10, portionSize: 100, containerSize: '500ml', yield: 85 },
+          'default': { portionsPerKg: 8, portionSize: 125, containerSize: '500ml', yield: 85 }
+        };
+
+        let config = portionConfig.default;
+        for (const [category, settings] of Object.entries(portionConfig)) {
+          if (dishName.toLowerCase().includes(category.toLowerCase())) {
+            config = settings;
+            break;
+          }
+        }
+
+        return {
+          dishName: dishName,
+          rawWeight: 5,
+          cookedWeight: 4.5,
+          yield: config.yield,
+          containerSize: config.containerSize,
+          portionsPerKg: config.portionsPerKg,
+          portionSize: config.portionSize,
+          category: data.category || 'Main Course'
+        };
+      }
+
+      return null;
     } catch (error) {
       console.error('Error loading recipe metadata:', error);
       return null;
     }
   };
 
-  // Get all available dishes from Recipe Bank
-  const getAvailableDishes = () => {
-    try {
-      const metadata = JSON.parse(localStorage.getItem('recipeMetadata') || '{}');
-      return Object.keys(metadata).sort();
-    } catch (error) {
-      console.error('Error getting dishes:', error);
-      return [];
-    }
-  };
-
-  // Enhanced prep entry state with auto-calculate flag
+  // Enhanced prep entry state with flexible expiry
   const [newPrepEntry, setNewPrepEntry] = useState({
     dishName: '',
     rawWeight: '',
@@ -49,22 +249,25 @@ const EnhancedPrepLog = ({
     preparedBy: 'Vasanth',
     temperature: '',
     notes: '',
-    // Recipe Bank metadata for calculations
     recipeYield: '',
     recipePortionsPerKg: '',
-    autoCalculate: true  // Flag for auto-calculation mode
+    autoCalculate: true,
+    batchNumber: generateBatchNumber(),
+    expiryDays: 3,
+    expiryDateMethod: 'days', // 'days' or 'date'
+    customExpiryDate: '',
+    calculatedExpiryDate: ''
   });
 
   // Smart suggestions state
   const [prepSuggestions, setPrepSuggestions] = useState([]);
   const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
 
-  // Calculate prep suggestions
-  const calculatePrepSuggestion = (dishName) => {
-    const metadata = getRecipeMetadata(dishName);
+  // Calculate prep suggestion
+  const calculatePrepSuggestion = async (dishName) => {
+    const metadata = await getRecipeMetadata(dishName);
     if (!metadata) return null;
 
-    // Get last 7 days sales for this dish
     const last7DaysSales = sales.filter(s => {
       if (!s || !s.date) return false;
       const saleDate = new Date(s.date);
@@ -72,8 +275,7 @@ const EnhancedPrepLog = ({
       return daysAgo <= 7 && s.dishName === dishName;
     });
 
-    // Calculate average daily sales
-    let avgDailySales = 20; // Default
+    let avgDailySales = 20;
     if (last7DaysSales.length > 0) {
       const totalSold = last7DaysSales.reduce((sum, s) =>
         sum + ((s.receivedPortions || 0) - (s.remainingPortions || 0)), 0
@@ -81,21 +283,13 @@ const EnhancedPrepLog = ({
       avgDailySales = Math.round(totalSold / 7);
     }
 
-    // Day of week multiplier
     const dayMultiplier = {
-      0: 1.3,  // Sunday
-      1: 0.8,  // Monday
-      2: 0.9,  // Tuesday
-      3: 0.9,  // Wednesday
-      4: 1.0,  // Thursday
-      5: 1.2,  // Friday
-      6: 1.3   // Saturday
+      0: 1.3, 1: 0.8, 2: 0.9, 3: 0.9, 4: 1.0, 5: 1.2, 6: 1.3
     };
 
     const today = new Date().getDay();
     const todayMultiplier = dayMultiplier[today] || 1;
 
-    // Calculate current stock
     const currentStock = sales
       .filter(s => s && s.dishName === dishName && !s.endOfDay)
       .reduce((sum, s) => sum + (s.remainingPortions || 0), 0);
@@ -105,8 +299,6 @@ const EnhancedPrepLog = ({
       .reduce((sum, s) => sum + (s.finalStock || 0), 0);
 
     const totalStock = currentStock + oldStock;
-
-    // Calculate suggestion based on metadata
     const expectedDemand = Math.ceil(avgDailySales * todayMultiplier * 1.1);
     const needToPrepare = Math.max(0, expectedDemand - totalStock);
     const kgToPrepare = Math.ceil((needToPrepare / (metadata.portionsPerKg || 8)) * 10) / 10;
@@ -130,13 +322,48 @@ const EnhancedPrepLog = ({
     };
   };
 
-  // Auto-fill from recipe selection
-  const handleDishSelection = (dishName) => {
-    const metadata = getRecipeMetadata(dishName);
-    if (metadata) {
-      console.log('Loading metadata for:', dishName, metadata);
+  // Update calculated expiry date when method or days change
+  useEffect(() => {
+    if (newPrepEntry.expiryDateMethod === 'days') {
+      const now = new Date();
+      const expiryDate = calculateExpiryDateFromDays(now, parseInt(newPrepEntry.expiryDays));
+      setNewPrepEntry(prev => ({
+        ...prev,
+        calculatedExpiryDate: expiryDate
+      }));
+    } else if (newPrepEntry.customExpiryDate) {
+      setNewPrepEntry(prev => ({
+        ...prev,
+        calculatedExpiryDate: new Date(newPrepEntry.customExpiryDate).toISOString()
+      }));
+    }
+  }, [newPrepEntry.expiryDays, newPrepEntry.expiryDateMethod, newPrepEntry.customExpiryDate]);
 
-      // Store recipe data for calculations
+  // Auto-fill from recipe selection - FETCH FROM DATABASE
+  const handleDishSelection = async (dishName) => {
+    if (!dishName) return;
+
+    const newBatchNumber = generateBatchNumber();
+    const defaultExpiryDays = getDefaultExpiryDays(dishName);
+
+    // Show loading state
+    setNewPrepEntry(prev => ({
+      ...prev,
+      dishName,
+      notes: 'Loading recipe data...',
+      batchNumber: newBatchNumber,
+      expiryDays: defaultExpiryDays
+    }));
+
+    // Fetch metadata from database
+    const metadata = await getRecipeMetadata(dishName);
+
+    if (metadata) {
+      console.log('Loaded metadata from database:', dishName, metadata);
+
+      const now = new Date();
+      const calculatedExpiry = calculateExpiryDateFromDays(now, defaultExpiryDays);
+
       setNewPrepEntry({
         dishName,
         rawWeight: '',
@@ -149,13 +376,20 @@ const EnhancedPrepLog = ({
         preparedBy: newPrepEntry.preparedBy,
         temperature: '',
         notes: `Recipe Bank: Container ${metadata.containerSize}, Yield ${metadata.yield}%, ${metadata.portionsPerKg} portions/kg`,
-        // Store recipe metadata for calculations
         recipeYield: metadata.yield || 90,
         recipePortionsPerKg: metadata.portionsPerKg || 8,
-        autoCalculate: true
+        autoCalculate: true,
+        batchNumber: newBatchNumber,
+        expiryDays: defaultExpiryDays,
+        expiryDateMethod: 'days',
+        customExpiryDate: '',
+        calculatedExpiryDate: calculatedExpiry
       });
     } else {
-      // If no metadata, use defaults
+      // Default values if no metadata found
+      const now = new Date();
+      const calculatedExpiry = calculateExpiryDateFromDays(now, 3);
+
       setNewPrepEntry({
         dishName,
         rawWeight: '',
@@ -170,7 +404,12 @@ const EnhancedPrepLog = ({
         notes: 'No recipe metadata found - using defaults',
         recipeYield: 90,
         recipePortionsPerKg: 8,
-        autoCalculate: false
+        autoCalculate: false,
+        batchNumber: newBatchNumber,
+        expiryDays: 3,
+        expiryDateMethod: 'days',
+        customExpiryDate: '',
+        calculatedExpiryDate: calculatedExpiry
       });
     }
   };
@@ -191,10 +430,7 @@ const EnhancedPrepLog = ({
     const rawWeightNum = parseFloat(weight);
 
     if (newPrepEntry.autoCalculate && newPrepEntry.recipeYield) {
-      // Auto-calculate cooked weight using recipe yield
       const cookedWeight = (rawWeightNum * (newPrepEntry.recipeYield / 100)).toFixed(2);
-
-      // Calculate total portions using recipe portions per kg
       const totalPortions = Math.floor(parseFloat(cookedWeight) * parseFloat(newPrepEntry.recipePortionsPerKg || 8));
 
       setNewPrepEntry(prev => ({
@@ -205,7 +441,6 @@ const EnhancedPrepLog = ({
         totalPortions: totalPortions.toString()
       }));
     } else {
-      // Manual mode - just update raw weight
       setNewPrepEntry(prev => ({
         ...prev,
         rawWeight: weight
@@ -226,14 +461,11 @@ const EnhancedPrepLog = ({
     }
 
     const cookedWeightNum = parseFloat(weight);
-
-    // Calculate actual yield if raw weight exists
     let actualYield = '';
     if (newPrepEntry.rawWeight) {
       actualYield = ((cookedWeightNum / parseFloat(newPrepEntry.rawWeight)) * 100).toFixed(1);
     }
 
-    // Calculate portions
     const portionsPerKg = parseFloat(newPrepEntry.portionsPerKg || newPrepEntry.recipePortionsPerKg || 8);
     const totalPortions = Math.floor(cookedWeightNum * portionsPerKg);
 
@@ -242,7 +474,7 @@ const EnhancedPrepLog = ({
       cookedWeight: weight,
       actualYield: actualYield,
       totalPortions: totalPortions.toString(),
-      autoCalculate: false  // Switch to manual mode when user edits cooked weight
+      autoCalculate: false
     }));
   };
 
@@ -253,16 +485,14 @@ const EnhancedPrepLog = ({
       autoCalculate: enabled
     }));
 
-    // If enabling auto-calculate and we have raw weight, recalculate
     if (enabled && newPrepEntry.rawWeight && newPrepEntry.recipeYield) {
       handleRawWeightChange(newPrepEntry.rawWeight);
     }
   };
 
-  // Submit prep entry
+  // Submit prep entry to database (using standard Supabase columns)
   const handlePrepSubmit = async () => {
     if (newPrepEntry.dishName && newPrepEntry.cookedWeight && newPrepEntry.totalPortions) {
-      // Check ingredient availability
       const shortages = checkIngredientAvailability(
         newPrepEntry.dishName,
         parseFloat(newPrepEntry.cookedWeight)
@@ -278,68 +508,122 @@ const EnhancedPrepLog = ({
         }
       }
 
-      const metadata = getRecipeMetadata(newPrepEntry.dishName);
       const now = new Date();
 
-      const newEntry = {
-        id: prepLog.length > 0 ? Math.max(...prepLog.map(p => p.id || 0)) + 1 : 1,
-        date: now.toISOString().split('T')[0],
-        timestamp: now.toISOString(),
-        prepTime: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-        dishName: newPrepEntry.dishName,
-        rawWeight: parseFloat(newPrepEntry.rawWeight) || 0,
-        quantityCooked: parseFloat(newPrepEntry.cookedWeight),
-        actualYield: parseFloat(newPrepEntry.actualYield) || 0,
-        expectedYield: metadata?.yield || newPrepEntry.recipeYield || 0,
-        preparedBy: newPrepEntry.preparedBy,
-        portionSize: parseInt(newPrepEntry.portionSize) || 160,
-        containerSize: newPrepEntry.containerSize || '500ml',
-        totalPortions: parseInt(newPrepEntry.totalPortions),
-        temperature: newPrepEntry.temperature,
-        notes: newPrepEntry.notes,
-        processed: false,
-        status: 'fresh',
-        cost: calculateDishCost(newPrepEntry.dishName, parseFloat(newPrepEntry.cookedWeight)),
-        autoCalculated: newPrepEntry.autoCalculate
-      };
+      // Use the calculated expiry date
+      const expiryDate = newPrepEntry.calculatedExpiryDate ||
+                        calculateExpiryDateFromDays(now, parseInt(newPrepEntry.expiryDays));
 
-      setPrepLog(prev => [...prev, newEntry]);
+      try {
+        // Only use columns that exist in your database
+        const dbEntry = {
+          dish_name: newPrepEntry.dishName,
+          quantity_cooked: parseFloat(newPrepEntry.cookedWeight),
+          prepared_by: newPrepEntry.preparedBy,
+          portion_size: parseInt(newPrepEntry.portionSize) || 160,
+          container_size: newPrepEntry.containerSize || '500ml',
+          total_portions: parseInt(newPrepEntry.totalPortions),
+          processed: false,
+          // These columns might exist:
+          batch_number: newPrepEntry.batchNumber,
+          date_made: now.toISOString(),
+          expiry_date: expiryDate
+        };
 
-      // Check if yield is significantly different from expected
-      if (metadata && metadata.yield && Math.abs(newEntry.actualYield - metadata.yield) > 5) {
-        alert(`📊 Yield Analysis:\n\nExpected: ${metadata.yield}%\nActual: ${newEntry.actualYield}%\nDifference: ${(newEntry.actualYield - metadata.yield).toFixed(1)}%\n\n${
-          newEntry.actualYield < metadata.yield
-            ? '⚠️ Lower yield than expected - check cooking process'
-            : '✅ Better yield than expected - good job!'
-        }`);
+        // Add optional fields if they exist in your database
+        if (newPrepEntry.rawWeight) {
+          dbEntry.raw_weight = parseFloat(newPrepEntry.rawWeight);
+        }
+        if (newPrepEntry.actualYield) {
+          dbEntry.actual_yield = parseFloat(newPrepEntry.actualYield);
+        }
+        if (newPrepEntry.temperature) {
+          dbEntry.temperature = parseFloat(newPrepEntry.temperature);
+        }
+        if (newPrepEntry.notes) {
+          dbEntry.notes = newPrepEntry.notes;
+        }
+
+        const { data, error } = await supabase
+          .from('prep_log')
+          .insert([dbEntry])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // Create local entry using the returned data
+        const newEntry = {
+          id: data.id,
+          batchNumber: data.batch_number || newPrepEntry.batchNumber,
+          date: data.created_at ? data.created_at.split('T')[0] : now.toISOString().split('T')[0],
+          timestamp: data.created_at || now.toISOString(),
+          dateMade: data.date_made || data.created_at || now.toISOString(),
+          expiryDate: data.expiry_date || expiryDate,
+          dishName: data.dish_name,
+          rawWeight: data.raw_weight || parseFloat(newPrepEntry.rawWeight) || 0,
+          quantityCooked: data.quantity_cooked,
+          actualYield: data.actual_yield || parseFloat(newPrepEntry.actualYield) || 0,
+          preparedBy: data.prepared_by,
+          portionSize: data.portion_size,
+          containerSize: data.container_size,
+          totalPortions: data.total_portions,
+          temperature: data.temperature,
+          notes: data.notes,
+          processed: data.processed || false,
+          cost: calculateDishCost(newPrepEntry.dishName, parseFloat(newPrepEntry.cookedWeight))
+        };
+
+        // Update local state
+        setPrepLog(prev => [...prev, newEntry]);
+
+        // Enhanced alert with label information
+        alert(`✅ Successfully added ${newEntry.totalPortions} portions of ${newEntry.dishName}!\n\n` +
+              `🏷️ LABEL INFORMATION:\n` +
+              `━━━━━━━━━━━━━━━━━━━━\n` +
+              `📦 Batch: ${newEntry.batchNumber}\n` +
+              `🍛 Dish: ${newEntry.dishName}\n` +
+              `📅 Made: ${formatDateForLabel(newEntry.dateMade)}\n` +
+              `⏰ USE BY: ${formatDateForLabel(newEntry.expiryDate)}\n` +
+              `📐 Container: ${newEntry.containerSize}\n` +
+              `⚖️ Portion: ${newEntry.portionSize}g\n` +
+              `👨‍🍳 Chef: ${newEntry.preparedBy}\n` +
+              `━━━━━━━━━━━━━━━━━━━━\n` +
+              `💾 Saved to database with ID: ${data.id}`);
+
+        // Reset form
+        setNewPrepEntry({
+          dishName: '',
+          rawWeight: '',
+          cookedWeight: '',
+          actualYield: '',
+          containerSize: '',
+          portionSize: '',
+          portionsPerKg: '',
+          totalPortions: '',
+          preparedBy: newPrepEntry.preparedBy,
+          temperature: '',
+          notes: '',
+          recipeYield: '',
+          recipePortionsPerKg: '',
+          autoCalculate: true,
+          batchNumber: generateBatchNumber(),
+          expiryDays: 3,
+          expiryDateMethod: 'days',
+          customExpiryDate: '',
+          calculatedExpiryDate: ''
+        });
+
+      } catch (error) {
+        console.error('Error saving to database:', error);
+        alert('❌ Error saving to database: ' + error.message);
       }
-
-      // Success message
-      alert(`✅ Successfully added ${newEntry.totalPortions} portions of ${newEntry.dishName}!\n\n📦 Container: ${newEntry.containerSize}\n⚖️ Portion: ${newEntry.portionSize}g\n📊 Yield: ${newEntry.actualYield}%\n👨‍🍳 Chef: ${newEntry.preparedBy}\n${newEntry.autoCalculated ? '🤖 Auto-calculated from Recipe Bank' : '✏️ Manually entered'}`);
-
-      // Reset form
-      setNewPrepEntry({
-        dishName: '',
-        rawWeight: '',
-        cookedWeight: '',
-        actualYield: '',
-        containerSize: '',
-        portionSize: '',
-        portionsPerKg: '',
-        totalPortions: '',
-        preparedBy: newPrepEntry.preparedBy,
-        temperature: '',
-        notes: '',
-        recipeYield: '',
-        recipePortionsPerKg: '',
-        autoCalculate: true
-      });
     } else {
       alert('❌ Please fill in all required fields');
     }
   };
 
-  // Delete prep item
+  // Delete prep item from database
   const handleDeletePrepItem = async (prepId) => {
     const prepItem = prepLog.find(p => p.id === prepId);
     if (!prepItem) return;
@@ -349,32 +633,50 @@ const EnhancedPrepLog = ({
       return;
     }
 
-    if (window.confirm(`Delete ${prepItem.dishName} (${prepItem.totalPortions} portions)?`)) {
-      setPrepLog(prev => prev.filter(p => p.id !== prepId));
-      alert('✅ Prep entry deleted successfully');
+    if (window.confirm(`Delete ${prepItem.dishName} (${prepItem.totalPortions} portions)?\nBatch: ${prepItem.batchNumber}`)) {
+      try {
+        const { error } = await supabase
+          .from('prep_log')
+          .delete()
+          .eq('id', prepId);
+
+        if (error) throw error;
+
+        setPrepLog(prev => prev.filter(p => p.id !== prepId));
+
+        alert('✅ Prep entry deleted from database successfully');
+      } catch (error) {
+        console.error('Error deleting from database:', error);
+        alert('❌ Error deleting from database: ' + error.message);
+      }
     }
   };
 
   // Generate suggestions on mount
   useEffect(() => {
-    const dishes = getAvailableDishes();
-    if (dishes.length > 0) {
-      const suggestions = dishes
-        .map(dish => calculatePrepSuggestion(dish))
-        .filter(s => s && s.kgToPrepare > 0)
-        .sort((a, b) => {
-          const priorityOrder = { high: 0, medium: 1, low: 2 };
-          return priorityOrder[a.priority] - priorityOrder[b.priority];
-        });
-      setPrepSuggestions(suggestions);
-    }
-  }, [sales, prepLog]);
+    const loadSuggestions = async () => {
+      const dishes = getAllDishNames();
+      if (dishes.length > 0) {
+        const suggestionPromises = dishes.map(dish => calculatePrepSuggestion(dish));
+        const allSuggestions = await Promise.all(suggestionPromises);
 
-  // Get available dishes for dropdown
-  const availableDishes = getAvailableDishes();
+        const validSuggestions = allSuggestions
+          .filter(s => s && s.kgToPrepare > 0)
+          .sort((a, b) => {
+            const priorityOrder = { high: 0, medium: 1, low: 2 };
+            return priorityOrder[a.priority] - priorityOrder[b.priority];
+          });
 
-  // If no recipes with metadata, show message
-  if (availableDishes.length === 0) {
+        setPrepSuggestions(validSuggestions);
+      }
+    };
+
+    loadSuggestions();
+  }, [sales, prepLog, getAllDishNames]);
+
+  const availableDishes = getAllDishNames();
+
+  if (availableDishes.length === 0 && !loadingRecipes) {
     return (
       <div className="p-6">
         <h2 className="text-2xl font-bold mb-6 flex items-center">
@@ -384,14 +686,14 @@ const EnhancedPrepLog = ({
           <AlertTriangle className="mx-auto mb-3 text-yellow-600" size={48} />
           <h3 className="text-lg font-semibold text-yellow-800 mb-2">No Recipes Available</h3>
           <p className="text-yellow-700 mb-4">
-            Your recipes need to be configured with portion details first.
+            Your recipes need to be configured in the Recipe Bank first.
           </p>
           <div className="text-left max-w-md mx-auto">
             <p className="text-sm text-yellow-700 mb-2">To fix this:</p>
             <ol className="list-decimal list-inside text-sm text-yellow-700 space-y-1">
               <li>Go to Recipe Bank</li>
-              <li>Click "Fix Existing Recipes" button</li>
-              <li>Or edit each recipe to add container size and portion info</li>
+              <li>Add or edit recipes with portion details</li>
+              <li>Make sure recipes are saved to database</li>
               <li>Come back here to start prep</li>
             </ol>
           </div>
@@ -403,8 +705,50 @@ const EnhancedPrepLog = ({
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-6 flex items-center">
-        <ChefHat className="mr-2" /> Smart Prep Planning with Auto-Calculations
+        <ChefHat className="mr-2" /> Smart Prep Planning with Batch Tracking
       </h2>
+
+      {/* Expiry Alerts */}
+      {prepLog.filter(p => !p.processed && p.expiryDate).length > 0 && (
+        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+          <h3 className="text-lg font-semibold text-red-800 mb-3 flex items-center">
+            <AlertCircle className="mr-2" /> Expiry Alerts - Use These First!
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {prepLog
+              .filter(p => !p.processed && p.expiryDate)
+              .sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate))
+              .slice(0, 6)
+              .map(prep => {
+                const expiryStatus = getExpiryStatus(prep.expiryDate);
+                return (
+                  <div key={prep.id} className={`p-3 rounded-lg border-2 ${
+                    expiryStatus.status === 'expired' ? 'bg-red-100 border-red-400' :
+                    expiryStatus.status === 'urgent' ? 'bg-orange-100 border-orange-400' :
+                    expiryStatus.status === 'warning' ? 'bg-yellow-100 border-yellow-400' :
+                    'bg-green-50 border-green-300'
+                  }`}>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="font-bold">{prep.dishName}</div>
+                        <div className="text-sm">Batch: {prep.batchNumber}</div>
+                        <div className="text-xs text-gray-600">
+                          Made: {formatDateTime(prep.dateMade)}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className={`font-bold text-${expiryStatus.color}-600`}>
+                          {expiryStatus.message}
+                        </div>
+                        <div className="text-sm">{prep.totalPortions}p</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
 
       {/* Smart Prep Suggestions */}
       <div className="mb-6 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-6">
@@ -432,9 +776,8 @@ const EnhancedPrepLog = ({
                     ? 'bg-yellow-50 border-yellow-300 hover:border-yellow-400'
                     : 'bg-green-50 border-green-300 hover:border-green-400'
                 }`}
-                onClick={() => {
-                  handleDishSelection(suggestion.dishName);
-                  // Auto-fill with suggested quantities
+                onClick={async () => {
+                  await handleDishSelection(suggestion.dishName);
                   handleRawWeightChange(suggestion.rawWeightNeeded);
                 }}
               >
@@ -484,14 +827,13 @@ const EnhancedPrepLog = ({
         </div>
       </div>
 
-      {/* Enhanced Prep Entry Form with Auto-Calculate */}
+      {/* Enhanced Prep Entry Form */}
       <div className="bg-white border rounded-lg p-6 mb-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">
-            🧑‍🍳 Add New Prep Entry {newPrepEntry.dishName && `- ${newPrepEntry.dishName}`}
+            🧑‍🍳 Add New Prep Entry - Batch #{newPrepEntry.batchNumber}
           </h3>
 
-          {/* Auto-Calculate Toggle */}
           <div className="flex items-center space-x-2">
             <label className="flex items-center cursor-pointer">
               <input
@@ -505,31 +847,126 @@ const EnhancedPrepLog = ({
                 Auto-Calculate from Recipe Bank
               </span>
             </label>
-            <Info
-              className="text-gray-400 cursor-help"
-              size={16}
-              title="When enabled, cooked weight and portions are calculated automatically based on Recipe Bank data"
-            />
           </div>
         </div>
 
-        {/* Auto-Calculate Info Banner */}
-        {newPrepEntry.autoCalculate && newPrepEntry.dishName && newPrepEntry.recipeYield && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-start">
-              <Info className="mr-2 text-blue-600 mt-0.5" size={16} />
-              <div className="text-sm text-blue-800">
-                <strong>Auto-Calculate Mode Active:</strong> Using Recipe Bank data
-                <div className="mt-1 grid grid-cols-3 gap-4 text-xs">
-                  <div>Expected Yield: {newPrepEntry.recipeYield}%</div>
-                  <div>Portions/kg: {newPrepEntry.recipePortionsPerKg}</div>
-                  <div>Portion Size: {newPrepEntry.portionSize}g</div>
-                </div>
-              </div>
+        {/* Batch Info Banner with Integrated Compact Label */}
+  <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+    <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center">
+        <Package className="mr-2 text-purple-600" size={20} />
+        <div className="text-sm">
+          <strong>Batch Number:</strong> {newPrepEntry.batchNumber}
+          <span className="ml-4"><strong>Date/Time:</strong> {formatDateTime(new Date())}</span>
+        </div>
+      </div>
+    </div>
+
+    {/* Compact Label Preview - Inline */}
+    {newPrepEntry.calculatedExpiryDate && newPrepEntry.dishName && (
+      <div className="mt-2 p-2 bg-white border border-gray-400 rounded text-xs font-mono">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <span className="font-bold text-base">{newPrepEntry.dishName}</span>
+            <span className="text-purple-600">Batch: {newPrepEntry.batchNumber}</span>
+            <span>Made: {formatDateForLabel(new Date())}</span>
+            <span className="font-bold text-red-600 bg-red-100 px-1 rounded">
+              USE BY: {formatDateForLabel(newPrepEntry.calculatedExpiryDate)}
+            </span>
+            <span className="text-gray-600">
+              {newPrepEntry.containerSize} | {newPrepEntry.portionSize}g | {newPrepEntry.preparedBy}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const labelText = `${newPrepEntry.dishName}\nBATCH: ${newPrepEntry.batchNumber}\nMADE: ${formatDateForLabel(new Date())}\nUSE BY: ${formatDateForLabel(newPrepEntry.calculatedExpiryDate)}\n${newPrepEntry.containerSize} | ${newPrepEntry.portionSize}g | ${newPrepEntry.preparedBy}`;
+              navigator.clipboard.writeText(labelText.trim());
+              alert('📋 Label text copied!');
+            }}
+            className="px-2 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700"
+          >
+            📋 Copy
+          </button>
+        </div>
+      </div>
+    )}
+
+    {/* Expiry Date Selection */}
+    <div className="mt-3 pt-3 border-t border-purple-200">
+      <div className="flex items-center space-x-4">
+        <label className="flex items-center">
+          <input
+            type="radio"
+            value="days"
+            checked={newPrepEntry.expiryDateMethod === 'days'}
+            onChange={(e) => setNewPrepEntry(prev => ({
+              ...prev,
+              expiryDateMethod: 'days',
+              customExpiryDate: ''
+            }))}
+            className="mr-2"
+          />
+          <span className="text-sm font-medium">Expiry in Days</span>
+        </label>
+
+        <label className="flex items-center">
+          <input
+            type="radio"
+            value="date"
+            checked={newPrepEntry.expiryDateMethod === 'date'}
+            onChange={(e) => setNewPrepEntry(prev => ({
+              ...prev,
+              expiryDateMethod: 'date'
+            }))}
+            className="mr-2"
+          />
+          <span className="text-sm font-medium">Custom Expiry Date</span>
+        </label>
+      </div>
+
+      <div className="mt-3 flex items-center space-x-4">
+        {newPrepEntry.expiryDateMethod === 'days' ? (
+          <>
+            <div>
+              <label className="text-sm font-medium mr-2">Days until expiry:</label>
+              <select
+                value={newPrepEntry.expiryDays}
+                onChange={(e) => setNewPrepEntry(prev => ({
+                  ...prev,
+                  expiryDays: parseInt(e.target.value)
+                }))}
+                className="px-3 py-1 border rounded"
+              >
+                <option value="1">1 Day</option>
+                <option value="2">2 Days</option>
+                <option value="3">3 Days</option>
+                <option value="4">4 Days</option>
+                <option value="5">5 Days</option>
+                <option value="7">7 Days</option>
+              </select>
             </div>
+          </>
+        ) : (
+          <div>
+            <label className="text-sm font-medium mr-2">Select expiry date:</label>
+            <input
+              type="date"
+              value={newPrepEntry.customExpiryDate}
+              min={new Date().toISOString().split('T')[0]}
+              onChange={(e) => setNewPrepEntry(prev => ({
+                ...prev,
+                customExpiryDate: e.target.value
+              }))}
+              className="px-3 py-1 border rounded"
+            />
           </div>
         )}
+      </div>
+    </div>
+  </div>
 
+      
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -538,27 +975,21 @@ const EnhancedPrepLog = ({
             <select
               value={newPrepEntry.dishName}
               onChange={(e) => handleDishSelection(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              required
+              className="w-full p-2 border rounded"
+              disabled={loadingRecipes}
             >
-              <option value="">Choose a recipe...</option>
-              {availableDishes.map(dish => {
-                const metadata = getRecipeMetadata(dish);
-                return (
-                  <option key={dish} value={dish}>
-                    {dish} {metadata?.containerSize ? `(${metadata.containerSize})` : ''}
-                  </option>
-                );
-              })}
+              <option value="">
+                {loadingRecipes ? 'Loading recipes...' : 'Select Dish'}
+              </option>
+              {getAllDishNames().map(dish => (
+                <option key={dish} value={dish}>{dish}</option>
+              ))}
             </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-1">
               Raw Weight (kg) {newPrepEntry.autoCalculate && '*'}
-              {newPrepEntry.autoCalculate && (
-                <span className="text-xs text-blue-600 ml-2">Primary Input</span>
-              )}
             </label>
             <input
               type="number"
@@ -577,7 +1008,7 @@ const EnhancedPrepLog = ({
               Cooked Weight (kg) *
               {newPrepEntry.autoCalculate && (
                 <span className="text-xs text-green-600 ml-2">
-                  <Calculator className="inline" size={12} /> Auto
+                  <Calculator className="inline" size={12} /> Auto from Recipe Bank
                 </span>
               )}
             </label>
@@ -607,15 +1038,6 @@ const EnhancedPrepLog = ({
                 : 'bg-gray-100'
             }`}>
               {newPrepEntry.actualYield || '-'}%
-              {newPrepEntry.dishName && newPrepEntry.recipeYield && newPrepEntry.actualYield && (
-                <span className={`text-xs ml-2 ${
-                  Math.abs(parseFloat(newPrepEntry.actualYield) - parseFloat(newPrepEntry.recipeYield)) > 5
-                    ? 'text-orange-600'
-                    : 'text-gray-600'
-                }`}>
-                  (Expected: {newPrepEntry.recipeYield}%)
-                </span>
-              )}
             </div>
           </div>
         </div>
@@ -627,8 +1049,9 @@ const EnhancedPrepLog = ({
               type="text"
               value={newPrepEntry.containerSize}
               onChange={(e) => setNewPrepEntry(prev => ({ ...prev, containerSize: e.target.value }))}
-              className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-              placeholder="From recipe"
+              className="w-full p-2 border rounded bg-gray-100"
+              placeholder="From Recipe Bank"
+              readOnly={newPrepEntry.autoCalculate}
             />
           </div>
 
@@ -637,22 +1060,10 @@ const EnhancedPrepLog = ({
             <input
               type="number"
               value={newPrepEntry.portionSize}
-              onChange={(e) => {
-                setNewPrepEntry(prev => ({ ...prev, portionSize: e.target.value }));
-                // Recalculate portions if cooked weight exists
-                if (newPrepEntry.cookedWeight && e.target.value) {
-                  const cookedGrams = parseFloat(newPrepEntry.cookedWeight) * 1000;
-                  const portions = Math.floor(cookedGrams / parseFloat(e.target.value));
-                  const portionsPerKg = portions / parseFloat(newPrepEntry.cookedWeight);
-                  setNewPrepEntry(prev => ({
-                    ...prev,
-                    totalPortions: portions.toString(),
-                    portionsPerKg: portionsPerKg.toFixed(1)
-                  }));
-                }
-              }}
-              className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-              placeholder="160"
+              onChange={(e) => setNewPrepEntry(prev => ({ ...prev, portionSize: e.target.value }))}
+              className="w-full p-2 border rounded bg-gray-100"
+              placeholder="From Recipe Bank"
+              readOnly={newPrepEntry.autoCalculate}
             />
           </div>
 
@@ -662,36 +1073,21 @@ const EnhancedPrepLog = ({
               type="number"
               step="0.1"
               value={newPrepEntry.portionsPerKg}
-              onChange={(e) => {
-                setNewPrepEntry(prev => ({ ...prev, portionsPerKg: e.target.value }));
-                // Recalculate total portions
-                if (newPrepEntry.cookedWeight && e.target.value) {
-                  const portions = Math.floor(parseFloat(newPrepEntry.cookedWeight) * parseFloat(e.target.value));
-                  setNewPrepEntry(prev => ({ ...prev, totalPortions: portions.toString() }));
-                }
-              }}
-              className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-              placeholder="From recipe"
+              onChange={(e) => setNewPrepEntry(prev => ({ ...prev, portionsPerKg: e.target.value }))}
+              className="w-full p-2 border rounded bg-gray-100"
+              placeholder="From Recipe Bank"
+              readOnly={newPrepEntry.autoCalculate}
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-1">
               Total Portions
-              {newPrepEntry.autoCalculate && (
-                <span className="text-xs text-green-600 ml-2">
-                  <Calculator className="inline" size={12} /> Auto
-                </span>
-              )}
             </label>
             <input
               type="text"
               value={newPrepEntry.totalPortions}
-              className={`w-full p-2 border rounded font-bold ${
-                newPrepEntry.autoCalculate
-                  ? 'bg-green-50 text-green-600 border-green-300'
-                  : 'bg-gray-50 text-gray-600'
-              }`}
+              className="w-full p-2 border rounded font-bold bg-green-50 text-green-600"
               readOnly
             />
           </div>
@@ -712,7 +1108,7 @@ const EnhancedPrepLog = ({
             <select
               value={newPrepEntry.preparedBy}
               onChange={(e) => setNewPrepEntry(prev => ({ ...prev, preparedBy: e.target.value }))}
-              className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border rounded"
             >
               <option value="Vasanth">Vasanth</option>
               <option value="Swetha">Swetha</option>
@@ -767,132 +1163,113 @@ const EnhancedPrepLog = ({
 
         <button
           onClick={handlePrepSubmit}
-          className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500"
+          className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
         >
           <Plus size={16} className="inline mr-1" />
           Add to Prep Log
         </button>
       </div>
 
-      {/* Prep Log Table with Enhanced Data */}
+      {/* Prep Log Table */}
       {prepLog && prepLog.length > 0 && (
         <div className="bg-white border rounded-lg">
           <div className="p-4 border-b">
-            <h3 className="text-lg font-semibold">Today's Prep Log with Performance Metrics</h3>
+            <h3 className="text-lg font-semibold">Prep Log with Batch Tracking (From Database)</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-2 text-left">Time</th>
+                  <th className="px-4 py-2 text-left">Batch #</th>
+                  <th className="px-4 py-2 text-left">Made</th>
                   <th className="px-4 py-2 text-left">Dish</th>
-                  <th className="px-4 py-2 text-left">Raw→Cooked</th>
-                  <th className="px-4 py-2 text-left">Yield</th>
+                  <th className="px-4 py-2 text-left">Weight</th>
                   <th className="px-4 py-2 text-left">Container</th>
                   <th className="px-4 py-2 text-left">Portions</th>
                   <th className="px-4 py-2 text-left">Chef</th>
-                  <th className="px-4 py-2 text-left">Age</th>
-                  <th className="px-4 py-2 text-left">Cost</th>
+                  <th className="px-4 py-2 text-left">Expires</th>
                   <th className="px-4 py-2 text-left">Status</th>
-                  <th className="px-4 py-2 text-left">Mode</th>
                   <th className="px-4 py-2 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {prepLog.map(prep => {
-                  const prepTime = new Date(prep.timestamp || prep.date);
-                  const now = new Date();
-                  const ageInHours = Math.floor((now - prepTime) / (1000 * 60 * 60));
-                  const ageInDays = Math.floor(ageInHours / 24);
+                {prepLog
+                  .sort((a, b) => new Date(b.timestamp || b.date) - new Date(a.timestamp || a.date))
+                  .map(prep => {
+                    const expiryStatus = getExpiryStatus(prep.expiryDate);
 
-                  let ageDisplay, ageColor;
-                  if (ageInDays > 0) {
-                    ageDisplay = `${ageInDays}d`;
-                    ageColor = ageInDays >= 2 ? 'text-red-600' : 'text-orange-600';
-                  } else {
-                    ageDisplay = `${ageInHours}h`;
-                    ageColor = 'text-green-600';
-                  }
-
-                  // Yield performance indicator
-                  const metadata = getRecipeMetadata(prep.dishName);
-                  const yieldDiff = metadata && metadata.yield && prep.actualYield
-                    ? prep.actualYield - metadata.yield
-                    : 0;
-
-                  return (
-                    <tr key={prep.id} className={
-                      prep.processed ? 'bg-green-50' :
-                      ageInDays >= 2 ? 'bg-red-50' :
-                      ageInDays >= 1 ? 'bg-yellow-50' :
-                      'bg-white'
-                    }>
-                      <td className="px-4 py-2 text-sm">{prep.prepTime || '-'}</td>
-                      <td className="px-4 py-2 font-medium">{prep.dishName}</td>
-                      <td className="px-4 py-2 text-sm">
-                        {prep.rawWeight || '-'}kg → {prep.quantityCooked}kg
-                      </td>
-                      <td className="px-4 py-2">
-                        <span className={`font-medium ${
-                          yieldDiff > 5 ? 'text-green-600' :
-                          yieldDiff < -5 ? 'text-red-600' :
-                          'text-gray-600'
-                        }`}>
-                          {prep.actualYield || '-'}%
-                          {yieldDiff !== 0 && (
-                            <span className="text-xs ml-1">
-                              ({yieldDiff > 0 ? '+' : ''}{yieldDiff.toFixed(1)})
+                    return (
+                      <tr key={prep.id} className={
+                        prep.processed ? 'bg-green-50' :
+                        expiryStatus.status === 'expired' ? 'bg-red-50' :
+                        expiryStatus.status === 'urgent' ? 'bg-orange-50' :
+                        expiryStatus.status === 'warning' ? 'bg-yellow-50' :
+                        'bg-white'
+                      }>
+                        <td className="px-4 py-2">
+                          <span className="font-mono text-sm font-bold text-purple-600">
+                            {prep.batchNumber || 'N/A'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-sm">
+                          {formatDateTime(prep.dateMade || prep.timestamp || prep.date)}
+                        </td>
+                        <td className="px-4 py-2 font-medium">{prep.dishName}</td>
+                        <td className="px-4 py-2 text-sm">
+                          {prep.rawWeight || '-'}kg → {prep.quantityCooked}kg
+                        </td>
+                        <td className="px-4 py-2">
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                            {prep.containerSize}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2">
+                          <span className="font-bold text-green-600">{prep.totalPortions}p</span>
+                        </td>
+                        <td className="px-4 py-2">{prep.preparedBy}</td>
+                        <td className="px-4 py-2">
+                          {prep.expiryDate ? (
+                            <div>
+                              <div className={`font-medium text-${expiryStatus.color}-600`}>
+                                {expiryStatus.message}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {formatDateForLabel(prep.expiryDate)}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2">
+                          {prep.processed ? (
+                            <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
+                              Dispatched
+                            </span>
+                          ) : expiryStatus.status === 'expired' ? (
+                            <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs">
+                              EXPIRED
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">
+                              Ready
                             </span>
                           )}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2">
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                          {prep.containerSize}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2">
-                        <span className="font-bold text-green-600">{prep.totalPortions}p</span>
-                      </td>
-                      <td className="px-4 py-2">{prep.preparedBy}</td>
-                      <td className="px-4 py-2">
-                        <span className={`font-medium ${ageColor}`}>
-                          {ageDisplay}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2 text-sm">
-                        £{prep.cost?.toFixed(2) || calculateDishCost(prep.dishName, prep.quantityCooked).toFixed(2)}
-                      </td>
-                      <td className="px-4 py-2">
-                        {prep.processed ? (
-                          <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">Dispatched</span>
-                        ) : (
-                          <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Ready</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2">
-                        {prep.autoCalculated ? (
-                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                            <Calculator size={12} className="inline" /> Auto
-                          </span>
-                        ) : (
-                          <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs">Manual</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2">
-                        {!prep.processed && (
-                          <button
-                            onClick={() => handleDeletePrepItem(prep.id)}
-                            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
-                          >
-                            <Trash2 size={14} className="inline mr-1" />
-                            Delete
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                        </td>
+                        <td className="px-4 py-2">
+                          {!prep.processed && (
+                            <button
+                              onClick={() => handleDeletePrepItem(prep.id)}
+                              className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+                            >
+                              <Trash2 size={14} className="inline mr-1" />
+                              Delete
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>

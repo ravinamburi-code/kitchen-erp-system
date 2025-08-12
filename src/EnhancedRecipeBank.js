@@ -1,5 +1,6 @@
-// EnhancedRecipeBank.js - FIXED VERSION
+// EnhancedRecipeBank.js - COMPLETE UPDATED VERSION
 import React, { useState, useEffect } from 'react';
+import { supabase } from './supabaseClient';
 import {
   ChefHat, Plus, Edit, Trash2, Save, X, Calculator,
   Package, AlertTriangle, CheckCircle, DollarSign
@@ -13,6 +14,10 @@ const EnhancedRecipeBank = ({
   userRole = 'staff',
   calculateDishCost = () => 0
 }) => {
+  // Database state
+  const [recipeBank, setRecipeBank] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   // Container sizes configuration
   const containerSizes = [
     '500ml', '650ml', '750ml', '1000ml',
@@ -52,6 +57,74 @@ const EnhancedRecipeBank = ({
     reorderLevel: ''
   });
 
+  const safeParseIngredients = (ingredients) => {
+  if (!ingredients || ingredients === '[]') return [];
+  if (Array.isArray(ingredients)) return ingredients;
+  if (typeof ingredients === 'string') {
+    try {
+      return JSON.parse(ingredients);
+    } catch (e) {
+      console.error('Error parsing ingredients:', e);
+      return [];
+    }
+  }
+  return [];
+};
+
+  // Load recipes from database
+  useEffect(() => {
+    const loadRecipesFromDatabase = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('recipe_bank')
+          .select('*')
+          .order('dish_name');
+
+        if (error) throw error;
+
+        if (data) {
+          setRecipeBank(data);
+          console.log('Loaded', data.length, 'recipes from database');
+
+          // Also update the old recipes format for compatibility
+          const formattedRecipes = [];
+          let recipeId = 1;
+
+          data.forEach(recipe => {
+            if (recipe.ingredients && recipe.ingredients !== '[]') {
+              try {
+                const ingredients = safeParseIngredients(recipe.ingredients);
+
+                ingredients.forEach(ing => {
+                  formattedRecipes.push({
+                    id: recipeId++,
+                    dishName: recipe.dish_name,
+                    ingredient: ing.item,
+                    quantityPer1kg: ing.quantity,
+                    unit: ing.unit
+                  });
+                });
+              } catch (e) {
+                console.error('Error parsing ingredients for', recipe.dish_name, e);
+              }
+            }
+          });
+
+          if (formattedRecipes.length > 0) {
+            setRecipes(formattedRecipes);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading recipe bank:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRecipesFromDatabase();
+  }, [setRecipes]);
+
   // Calculate yield percentage
   const calculateYield = (raw, cooked) => {
     if (raw && cooked && parseFloat(raw) > 0) {
@@ -79,52 +152,48 @@ const EnhancedRecipeBank = ({
     }
   };
 
-  // Load recipe for editing
-  const startEditingRecipe = (dishName) => {
-    console.log('Starting to edit recipe:', dishName);
+  // Load recipe for editing from database
+  const startEditingRecipe = async (recipeData) => {
+    console.log('Starting to edit recipe:', recipeData.dish_name);
 
-    const dishRecipes = recipes.filter(r => r.dishName === dishName);
-    console.log('Found ingredients:', dishRecipes.length);
+    // Parse ingredients from database
+    let ingredients = [];
+    if (recipeData.ingredients && recipeData.ingredients !== '[]') {
+      try {
+        const parsedIngredients = safeParseIngredients(recipeData.ingredients);
 
-    const metadata = getRecipeMetadata(dishName);
-    console.log('Existing metadata:', metadata);
+        ingredients = parsedIngredients.map((ing, index) => ({
+          id: Date.now() + index,
+          ingredient: ing.item,
+          quantityPer1kg: ing.quantity,
+          unit: ing.unit,
+          cost: 0
+        }));
+      } catch (e) {
+        console.error('Error parsing ingredients:', e);
+      }
+    }
 
-    // If no metadata exists, create default metadata from existing recipe
-    const recipeData = metadata || {
-      dishName: dishName,
-      rawWeight: 5,  // Default values
-      cookedWeight: 4.5,
-      containerSize: '500ml',
-      portionsPerKg: 6,
-      portionSize: 166,
-      category: 'Main Course',
-      notes: 'Edit this recipe to add proper details'
-    };
+    // Load recipe metadata (if exists)
+    const metadata = getRecipeMetadata(recipeData.dish_name);
 
-    // Load recipe data into the form
+    // Set form data
     setNewRecipe({
-      dishName: recipeData.dishName,
-      rawWeight: recipeData.rawWeight?.toString() || '5',
-      cookedWeight: recipeData.cookedWeight?.toString() || '4.5',
-      containerSize: recipeData.containerSize || '500ml',
+      dishName: recipeData.dish_name,
+      rawWeight: metadata?.rawWeight?.toString() || '5',
+      cookedWeight: metadata?.cookedWeight?.toString() || '4.5',
+      containerSize: metadata?.containerSize || '500ml',
       customContainerSize: '',
-      portionsPerKg: recipeData.portionsPerKg?.toString() || '6',
-      portionSize: recipeData.portionSize?.toString() || '166',
+      portionsPerKg: metadata?.portionsPerKg?.toString() || '6',
+      portionSize: metadata?.portionSize?.toString() || '166',
       category: recipeData.category || 'Main Course',
-      ingredients: dishRecipes.map((r, index) => ({
-        id: Date.now() + index, // Unique ID for each ingredient
-        ingredient: r.ingredient,
-        quantityPer1kg: r.quantityPer1kg,
-        unit: r.unit,
-        cost: 0
-      })),
-      notes: recipeData.notes || ''
+      ingredients: ingredients,
+      notes: metadata?.notes || ''
     });
 
-    console.log('Form data set, opening form...');
-    setEditingRecipe(dishName);
+    setEditingRecipe(recipeData.id);
     setShowAddRecipe(true);
-    setAutoCalculatePortions(false); // Don't auto-calculate when editing
+    setAutoCalculatePortions(false);
   };
 
   // Add ingredient to recipe
@@ -186,95 +255,134 @@ const EnhancedRecipeBank = ({
     }));
   };
 
-  // Save new or updated recipe
-  const saveRecipe = () => {
+  // Save recipe to database
+  const saveRecipe = async () => {
     if (newRecipe.dishName && newRecipe.cookedWeight && newRecipe.containerSize && newRecipe.ingredients.length > 0) {
 
-      // If editing, remove old recipes first
-      if (editingRecipe) {
-        setRecipes(prev => (prev || []).filter(r => r.dishName !== editingRecipe));
-      }
-
-      // Create recipe entries
-      const recipeEntries = newRecipe.ingredients.map((ing, index) => ({
-        id: recipes && recipes.length > 0 ? Math.max(...recipes.map(r => r.id || 0)) + index + 1 : index + 1,
-        dishName: newRecipe.dishName,
-        ingredient: ing.ingredient,
-        quantityPer1kg: ing.quantityPer1kg,
+      // Format ingredients for database
+      const ingredientsForDB = newRecipe.ingredients.map(ing => ({
+        item: ing.ingredient,
+        quantity: ing.quantityPer1kg,
         unit: ing.unit
       }));
 
-      // Create/Update recipe metadata
-      const recipeMetadata = {
-        dishName: newRecipe.dishName,
-        rawWeight: parseFloat(newRecipe.rawWeight) || 0,
-        cookedWeight: parseFloat(newRecipe.cookedWeight) || 0,
-        yield: calculateYield(newRecipe.rawWeight, newRecipe.cookedWeight),
-        containerSize: newRecipe.containerSize === 'Other' ? newRecipe.customContainerSize : newRecipe.containerSize,
-        portionsPerKg: parseFloat(newRecipe.portionsPerKg) || 8,
-        portionSize: parseFloat(newRecipe.portionSize) || 125,
-        category: newRecipe.category,
-        notes: newRecipe.notes
-      };
+      // Calculate total cost
+      const totalCost = newRecipe.ingredients.reduce((sum, ing) => sum + (ing.cost || 0), 0);
 
-      // Store metadata in localStorage
       try {
-        const existingMetadata = JSON.parse(localStorage.getItem('recipeMetadata') || '{}');
-        // If editing and dish name changed, remove old metadata
-        if (editingRecipe && editingRecipe !== newRecipe.dishName) {
-          delete existingMetadata[editingRecipe];
+        if (editingRecipe) {
+          // Update existing recipe
+          const { error } = await supabase
+            .from('recipe_bank')
+            .update({
+              dish_name: newRecipe.dishName,
+              ingredients: JSON.stringify(ingredientsForDB),
+              cost_per_kg: totalCost,
+              category: newRecipe.category,
+              preparation_time: parseInt(newRecipe.preparationTime) || null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', editingRecipe);
+
+          if (error) throw error;
+        } else {
+          // Insert new recipe
+          const { error } = await supabase
+            .from('recipe_bank')
+            .insert({
+              dish_name: newRecipe.dishName,
+              ingredients: JSON.stringify(ingredientsForDB),
+              cost_per_kg: totalCost,
+              category: newRecipe.category,
+              preparation_time: parseInt(newRecipe.preparationTime) || null
+            });
+
+          if (error) throw error;
         }
+
+        // Save metadata to localStorage
+        const recipeMetadata = {
+          dishName: newRecipe.dishName,
+          rawWeight: parseFloat(newRecipe.rawWeight) || 0,
+          cookedWeight: parseFloat(newRecipe.cookedWeight) || 0,
+          yield: calculateYield(newRecipe.rawWeight, newRecipe.cookedWeight),
+          containerSize: newRecipe.containerSize === 'Other' ? newRecipe.customContainerSize : newRecipe.containerSize,
+          portionsPerKg: parseFloat(newRecipe.portionsPerKg) || 8,
+          portionSize: parseFloat(newRecipe.portionSize) || 125,
+          category: newRecipe.category,
+          notes: newRecipe.notes
+        };
+
+        const existingMetadata = JSON.parse(localStorage.getItem('recipeMetadata') || '{}');
         existingMetadata[newRecipe.dishName] = recipeMetadata;
         localStorage.setItem('recipeMetadata', JSON.stringify(existingMetadata));
+
+        // Reload recipes
+        const { data, error } = await supabase
+          .from('recipe_bank')
+          .select('*')
+          .order('dish_name');
+
+        if (!error && data) {
+          setRecipeBank(data);
+        }
+
+        // Reset form
+        setNewRecipe({
+          dishName: '',
+          rawWeight: '',
+          cookedWeight: '',
+          containerSize: '500ml',
+          customContainerSize: '',
+          portionsPerKg: '',
+          portionSize: '',
+          category: 'Main Course',
+          ingredients: [],
+          notes: ''
+        });
+        setShowAddRecipe(false);
+        setEditingRecipe(null);
+        setAutoCalculatePortions(true);
+
+        alert(`✅ Recipe "${recipeMetadata.dishName}" ${editingRecipe ? 'updated' : 'added'} successfully!`);
       } catch (error) {
-        console.error('Error saving recipe metadata:', error);
+        console.error('Error saving recipe:', error);
+        alert('❌ Error saving recipe: ' + error.message);
       }
-
-      // Add recipe entries to recipes array
-      setRecipes(prev => [...(prev || []), ...recipeEntries]);
-
-      // Reset form
-      setNewRecipe({
-        dishName: '',
-        rawWeight: '',
-        cookedWeight: '',
-        containerSize: '500ml',
-        customContainerSize: '',
-        portionsPerKg: '',
-        portionSize: '',
-        category: 'Main Course',
-        ingredients: [],
-        notes: ''
-      });
-      setShowAddRecipe(false);
-      setEditingRecipe(null);
-      setAutoCalculatePortions(true);
-
-      alert(`✅ Recipe "${recipeMetadata.dishName}" ${editingRecipe ? 'updated' : 'added'} successfully!`);
     } else {
       alert('❌ Please fill in all required fields and add at least one ingredient');
     }
   };
 
-  // Delete recipe (Owner only)
-  const deleteRecipe = (dishName) => {
+  // Delete recipe from database
+  const deleteRecipe = async (recipeId, dishName) => {
     if (userRole !== 'owner') {
       alert('⛔ Only owners can delete recipes');
       return;
     }
 
     if (window.confirm(`Are you sure you want to delete the recipe for "${dishName}"? This cannot be undone.`)) {
-      setRecipes(prev => (prev || []).filter(r => r.dishName !== dishName));
-
       try {
+        const { error } = await supabase
+          .from('recipe_bank')
+          .delete()
+          .eq('id', recipeId);
+
+        if (error) throw error;
+
+        // Remove from local state
+        setRecipeBank(prev => prev.filter(r => r.id !== recipeId));
+
+        // Remove metadata
         const metadata = JSON.parse(localStorage.getItem('recipeMetadata') || '{}');
         delete metadata[dishName];
         localStorage.setItem('recipeMetadata', JSON.stringify(metadata));
-      } catch (error) {
-        console.error('Error deleting recipe metadata:', error);
-      }
 
-      alert(`✅ Recipe "${dishName}" deleted successfully`);
+        alert(`✅ Recipe "${dishName}" deleted successfully`);
+      } catch (error) {
+        console.error('Error deleting recipe:', error);
+        alert('❌ Error deleting recipe: ' + error.message);
+      }
     }
   };
 
@@ -289,29 +397,29 @@ const EnhancedRecipeBank = ({
     }
   };
 
-  // Calculate total recipe cost
-  const calculateRecipeCost = (dishName) => {
-    if (!recipes || recipes.length === 0) return 0;
+  // Calculate recipe cost from database format
+  const calculateRecipeCostFromDB = (recipe) => {
+    if (!recipe.ingredients || recipe.ingredients === '[]') return 0;
 
-    const dishRecipes = recipes.filter(r => r.dishName === dishName);
-    let totalCost = 0;
+    try {
+      const ingredients = safeParseIngredients(recipe.ingredients);
 
-    dishRecipes.forEach(recipe => {
-      if (inventory && inventory.length > 0) {
-        const inventoryItem = inventory.find(i => i.name === recipe.ingredient);
-        if (inventoryItem) {
-          totalCost += (recipe.quantityPer1kg || 0) * (inventoryItem.unitCost || 0);
+      let totalCost = 0;
+
+      ingredients.forEach(ing => {
+        if (inventory && inventory.length > 0) {
+          const inventoryItem = inventory.find(i => i.name === ing.item);
+          if (inventoryItem) {
+            totalCost += (ing.quantity || 0) * (inventoryItem.unitCost || 0);
+          }
         }
-      }
-    });
+      });
 
-    return totalCost;
-  };
-
-  // Get unique dish names
-  const getUniqueDishes = () => {
-    if (!recipes || recipes.length === 0) return [];
-    return [...new Set(recipes.map(r => r.dishName))];
+      return totalCost;
+    } catch (error) {
+      console.error('Error calculating cost:', error);
+      return recipe.cost_per_kg || 0;
+    }
   };
 
   // Cancel edit/add
@@ -339,9 +447,9 @@ const EnhancedRecipeBank = ({
         <ChefHat className="mr-2" /> Enhanced Recipe Bank
       </h2>
 
-      {/* Add Recipe Button and Migration */}
+      {/* Add Recipe Button */}
       {!showAddRecipe && (
-        <div className="mb-6 flex space-x-3">
+        <div className="mb-6">
           <button
             onClick={() => {
               setEditingRecipe(null);
@@ -353,46 +461,6 @@ const EnhancedRecipeBank = ({
             <Plus className="mr-2" size={20} />
             Add New Recipe
           </button>
-
-          {/* Migration button for existing recipes without metadata */}
-          {getUniqueDishes().length > 0 && (
-            <button
-              onClick={() => {
-                const existingMetadata = JSON.parse(localStorage.getItem('recipeMetadata') || '{}');
-                let migrated = 0;
-
-                getUniqueDishes().forEach(dishName => {
-                  if (!existingMetadata[dishName]) {
-                    // Create default metadata for recipes without it
-                    existingMetadata[dishName] = {
-                      dishName: dishName,
-                      rawWeight: 5,
-                      cookedWeight: 4.5,
-                      yield: 90,
-                      containerSize: dishName.includes('Biryani') || dishName.includes('Pulav') ? '650ml' : '500ml',
-                      portionsPerKg: dishName.includes('Curry') ? 10 : dishName.includes('Pakora') ? 12 : 6,
-                      portionSize: dishName.includes('Curry') ? 100 : dishName.includes('Pakora') ? 83 : 166,
-                      category: dishName.includes('Pakora') ? 'Starter' : dishName.includes('Salan') ? 'Side Dish' : 'Main Course',
-                      notes: 'Migrated from existing recipe'
-                    };
-                    migrated++;
-                  }
-                });
-
-                if (migrated > 0) {
-                  localStorage.setItem('recipeMetadata', JSON.stringify(existingMetadata));
-                  alert(`✅ Migrated ${migrated} recipes! You can now edit them.`);
-                  window.location.reload(); // Refresh to show the metadata
-                } else {
-                  alert('All recipes already have metadata!');
-                }
-              }}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center"
-            >
-              <Calculator className="mr-2" size={20} />
-              Fix Existing Recipes
-            </button>
-          )}
         </div>
       )}
 
@@ -400,7 +468,7 @@ const EnhancedRecipeBank = ({
       {showAddRecipe && (
         <div className="bg-white border-2 border-green-500 rounded-lg p-6 mb-6">
           <h3 className="text-xl font-semibold mb-4 text-green-700">
-            {editingRecipe ? `Edit Recipe: ${editingRecipe}` : 'Create New Recipe'}
+            {editingRecipe ? `Edit Recipe: ${newRecipe.dishName}` : 'Create New Recipe'}
           </h3>
 
           {/* Basic Recipe Info */}
@@ -423,11 +491,16 @@ const EnhancedRecipeBank = ({
                 onChange={(e) => setNewRecipe(prev => ({ ...prev, category: e.target.value }))}
                 className="w-full p-2 border rounded-lg"
               >
-                <option value="Main Course">Main Course</option>
+                <option value="Biryani">Biryani</option>
+                <option value="Curry">Curry</option>
                 <option value="Starter">Starter</option>
-                <option value="Side Dish">Side Dish</option>
                 <option value="Dessert">Dessert</option>
-                <option value="Beverage">Beverage</option>
+                <option value="Chutney">Chutney</option>
+                <option value="Rice">Rice</option>
+                <option value="Pulav">Pulav</option>
+                <option value="Breakfast">Breakfast</option>
+                <option value="Snack">Snack</option>
+                <option value="Bread">Bread</option>
               </select>
             </div>
 
@@ -478,15 +551,6 @@ const EnhancedRecipeBank = ({
                   <option key={size} value={size}>{size}</option>
                 ))}
               </select>
-              {newRecipe.containerSize === 'Other' && (
-                <input
-                  type="text"
-                  value={newRecipe.customContainerSize}
-                  onChange={(e) => setNewRecipe(prev => ({ ...prev, customContainerSize: e.target.value }))}
-                  className="w-full p-2 border rounded-lg mt-2"
-                  placeholder="Enter custom size"
-                />
-              )}
             </div>
 
             <div>
@@ -708,144 +772,13 @@ const EnhancedRecipeBank = ({
         </div>
       )}
 
-      {/* Existing Recipes Display */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {getUniqueDishes().map(dishName => {
-          const dishRecipes = recipes.filter(r => r.dishName === dishName);
-          const metadata = getRecipeMetadata(dishName);
-          const totalCost = calculateRecipeCost(dishName);
-
-          return (
-            <div key={dishName} className="bg-white border rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
-              {/* Recipe Header */}
-              <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-xl font-bold">{dishName}</h3>
-                    {metadata && (
-                      <div className="text-sm opacity-90 mt-1">
-                        {metadata.category} | {metadata.containerSize} containers
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => startEditingRecipe(dishName)}
-                      className="p-1 hover:bg-white hover:bg-opacity-20 rounded"
-                      title="Edit Recipe"
-                    >
-                      <Edit size={18} />
-                    </button>
-                    {userRole === 'owner' && (
-                      <button
-                        onClick={() => deleteRecipe(dishName)}
-                        className="p-1 hover:bg-white hover:bg-opacity-20 rounded"
-                        title="Delete Recipe"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Recipe Metadata */}
-              {metadata && (
-                <div className="p-4 bg-gray-50 border-b">
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <span className="text-gray-600">Raw Weight:</span>
-                      <span className="font-medium ml-2">{metadata.rawWeight}kg</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Cooked Weight:</span>
-                      <span className="font-medium ml-2">{metadata.cookedWeight}kg</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Yield:</span>
-                      <span className="font-medium ml-2 text-green-600">{metadata.yield}%</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Portions/kg:</span>
-                      <span className="font-medium ml-2">{metadata.portionsPerKg}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Portion Size:</span>
-                      <span className="font-medium ml-2">{metadata.portionSize}g</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Container:</span>
-                      <span className="font-medium ml-2">{metadata.containerSize}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Ingredients List */}
-              <div className="p-4">
-                <h4 className="font-semibold mb-3 text-gray-700">Ingredients:</h4>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {dishRecipes.map(recipe => {
-                    const inventoryItem = inventory && inventory.length > 0
-                      ? inventory.find(i => i.name === recipe.ingredient)
-                      : null;
-                    const itemCost = inventoryItem
-                      ? (recipe.quantityPer1kg || 0) * (inventoryItem.unitCost || 0)
-                      : 0;
-
-                    return (
-                      <div key={recipe.id} className="flex justify-between items-center text-sm">
-                        <span className="flex items-center">
-                          {!inventoryItem && (
-                            <AlertTriangle size={14} className="text-orange-500 mr-1" title="Not in inventory" />
-                          )}
-                          {recipe.ingredient}
-                        </span>
-                        <span className="text-gray-600">
-                          {recipe.quantityPer1kg} {recipe.unit}
-                          {inventoryItem && (
-                            <span className="text-green-600 ml-2">
-                              £{itemCost.toFixed(3)}
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Cost Summary */}
-              <div className="p-4 bg-green-50 border-t">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <div className="text-sm text-gray-600">Total Cost per kg</div>
-                    <div className="text-xl font-bold text-green-600">£{totalCost.toFixed(2)}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm text-gray-600">Cost per portion</div>
-                    <div className="text-lg font-semibold text-green-600">
-                      £{metadata && metadata.portionsPerKg > 0
-                        ? (totalCost / metadata.portionsPerKg).toFixed(2)
-                        : (totalCost * 0.16).toFixed(2)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Notes */}
-              {metadata?.notes && (
-                <div className="p-3 bg-yellow-50 border-t text-sm">
-                  <strong>Notes:</strong> {metadata.notes}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* No Recipes Message */}
-      {(!recipes || recipes.length === 0) && !showAddRecipe && (
+      {/* Display Recipes */}
+      {loading ? (
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading recipes...</p>
+        </div>
+      ) : recipeBank.length === 0 ? (
         <div className="text-center py-12">
           <ChefHat size={64} className="mx-auto mb-4 text-gray-400" />
           <h3 className="text-xl font-medium text-gray-600 mb-2">No Recipes Yet</h3>
@@ -856,6 +789,147 @@ const EnhancedRecipeBank = ({
           >
             Add First Recipe
           </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {recipeBank.map(recipe => {
+            const ingredients = safeParseIngredients(recipe.ingredients);
+
+
+            const totalCost = calculateRecipeCostFromDB(recipe);
+            const metadata = getRecipeMetadata(recipe.dish_name);
+
+            return (
+              <div key={recipe.id} className="bg-white border rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
+                {/* Recipe Header */}
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-xl font-bold">{recipe.dish_name}</h3>
+                      <div className="text-sm opacity-90 mt-1">
+                        {recipe.category} | Prep time: {recipe.preparation_time || 'N/A'} mins
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => startEditingRecipe(recipe)}
+                        className="p-1 hover:bg-white hover:bg-opacity-20 rounded"
+                        title="Edit Recipe"
+                      >
+                        <Edit size={18} />
+                      </button>
+                      {userRole === 'owner' && (
+                        <button
+                          onClick={() => deleteRecipe(recipe.id, recipe.dish_name)}
+                          className="p-1 hover:bg-white hover:bg-opacity-20 rounded"
+                          title="Delete Recipe"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recipe Metadata */}
+                {metadata && (
+                  <div className="p-4 bg-gray-50 border-b">
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="text-gray-600">Raw Weight:</span>
+                        <span className="font-medium ml-2">{metadata.rawWeight}kg</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Cooked Weight:</span>
+                        <span className="font-medium ml-2">{metadata.cookedWeight}kg</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Yield:</span>
+                        <span className="font-medium ml-2 text-green-600">{metadata.yield}%</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Portions/kg:</span>
+                        <span className="font-medium ml-2">{metadata.portionsPerKg}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Portion Size:</span>
+                        <span className="font-medium ml-2">{metadata.portionSize}g</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Container:</span>
+                        <span className="font-medium ml-2">{metadata.containerSize}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Ingredients List */}
+                <div className="p-4">
+                  <h4 className="font-semibold mb-3 text-gray-700">Ingredients:</h4>
+                  {ingredients.length > 0 ? (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {ingredients.map((ing, index) => {
+                        const inventoryItem = inventory && inventory.length > 0
+                          ? inventory.find(i => i.name === ing.item)
+                          : null;
+                        const itemCost = inventoryItem
+                          ? (ing.quantity || 0) * (inventoryItem.unitCost || 0)
+                          : 0;
+
+                        return (
+                          <div key={index} className="flex justify-between items-center text-sm">
+                            <span className="flex items-center">
+                              {!inventoryItem && (
+                                <AlertTriangle size={14} className="text-orange-500 mr-1" title="Not in inventory" />
+                              )}
+                              {ing.item}
+                            </span>
+                            <span className="text-gray-600">
+                              {ing.quantity} {ing.unit}
+                              {inventoryItem && (
+                                <span className="text-green-600 ml-2">
+                                  £{itemCost.toFixed(3)}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm">No ingredients added yet</p>
+                  )}
+                </div>
+
+                {/* Cost Summary */}
+                <div className="p-4 bg-green-50 border-t">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <div className="text-sm text-gray-600">Total Cost per kg</div>
+                      <div className="text-xl font-bold text-green-600">
+                        £{totalCost.toFixed(2)}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-gray-600">Cost per portion</div>
+                      <div className="text-lg font-semibold text-green-600">
+                        £{metadata && metadata.portionsPerKg > 0
+                          ? (totalCost / metadata.portionsPerKg).toFixed(2)
+                          : (totalCost * 0.16).toFixed(2)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                {metadata?.notes && (
+                  <div className="p-3 bg-yellow-50 border-t text-sm">
+                    <strong>Notes:</strong> {metadata.notes}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

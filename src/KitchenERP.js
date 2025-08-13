@@ -7,11 +7,14 @@ import {
   TrendingUp, TrendingDown, Clock, Printer
 } from 'lucide-react';
 
-// ADD THESE TWO LINES:
+// Imports
 import EnhancedRecipeBank from './EnhancedRecipeBank';
 import EnhancedPrepLog from './EnhancedPrepLog';
 import EnhancedDispatch from './EnhancedDispatch';
-
+import EnhancedSales from './EnhancedSales';
+import SmartPlanningDashboard from './SmartPlanningDashboard';
+import OldStockOffersManager from './OldStockOffersManager';
+import EnhancedMainDashboard from './EnhancedMainDashboard';
 const KitchenERP = () => {
 
   // Load data from localStorage on mount
@@ -36,7 +39,7 @@ const KitchenERP = () => {
     }
   };
 
-
+  // In your main KitchenERP component, add these handlers:
 
 
   // Save to database function
@@ -751,6 +754,72 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
     return totalUsed;
   };
 
+  // NEW CALLBACK HANDLERS FOR ENHANCED COMPONENTS
+  const handleQuickPrep = (dishName, suggestedKg) => {
+    setNewPrepEntry(prev => ({
+      ...prev,
+      dishName,
+      quantityCooked: suggestedKg.toString(),
+      portionSize: dishName.includes('Biryani') ? 166 :
+                   dishName.includes('Curry') ? 100 : 160,
+      containerSize: dishName.includes('Biryani') ? '650ml' : '500ml'
+    }));
+    setActiveTab('prep');
+    alert(`✅ Prep form auto-filled for ${dishName} - ${suggestedKg}kg`);
+  };
+
+  const handleCreateOffer = (offer) => {
+    console.log('Offer created:', offer);
+    saveToDatabase('offers', {
+      dish_name: offer.dishName,
+      location: offer.location,
+      discount_percentage: offer.discount,
+      offer_price: offer.offerPrice,
+      original_price: offer.originalPrice,
+      portions_available: offer.portions,
+      valid_until: offer.validUntil,
+      status: offer.status
+    });
+    alert(`✅ Offer activated!\n${offer.headline}`);
+  };
+
+  const handleSendNotification = (template) => {
+    console.log('Sending notification:', template);
+    alert(`📤 ${template.channel} notification sent!`);
+    saveToDatabase('notifications', {
+      channel: template.channel,
+      location: template.location,
+      message: template.message,
+      sent_at: new Date().toISOString()
+    });
+  };
+
+  const handleQuickAction = (action, data) => {
+    console.log('Quick action:', action, data);
+    switch(action) {
+      case 'prep':
+      case 'Cook immediately':
+        setActiveTab('prep');
+        if (data.items && data.items[0]) {
+          handleQuickPrep(data.items[0].dish, 5);
+        }
+        break;
+      case 'offers':
+      case 'Create special offers':
+        setActiveTab('old-stock');
+        break;
+      case 'procurement':
+        setActiveTab('procurement');
+        break;
+      case 'waste-analysis':
+        setActiveTab('waste');
+        break;
+      default:
+        console.log('Unknown action:', action);
+    }
+  };
+
+
   const calculateDishCost = (dishName, quantity = 1) => {
     const dishRecipes = recipes.filter(r => r.dishName === dishName);
     let totalCost = 0;
@@ -1277,311 +1346,6 @@ const UserManagement = () => {
 };
 
 
-  // Dashboard Component
-  const Dashboard = () => {
-    const inventoryMetrics = getInventoryMetrics();
-    const lowStockItems = inventoryMetrics.filter(item => item.closingBalance <= item.reorderLevel);
-    const totalStockValue = inventoryMetrics.reduce((sum, item) => sum + item.stockValue, 0);
-    const totalSoldPortions = sales.reduce((sum, s) => sum + (s.receivedPortions - s.remainingPortions), 0);
-    const wasteValue = wasteLog.reduce((sum, w) => sum + (w.value || 0), 0);
-
-    return (
-      <div className="p-6">
-
-
-
-        <h2 className="text-2xl font-bold mb-6 flex items-center">
-          <BarChart3 className="mr-2" /> Kitchen Operations Dashboard
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total Stock Value</p>
-                <p className="text-2xl font-bold text-blue-600">£{totalStockValue.toFixed(2)}</p>
-              </div>
-              <Package className="text-blue-500" size={32} />
-            </div>
-          </div>
-
-          <div className="bg-green-50 p-4 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Portions Sold Today</p>
-                <p className="text-2xl font-bold text-green-600">{totalSoldPortions}</p>
-              </div>
-              <CheckCircle className="text-green-500" size={32} />
-            </div>
-          </div>
-
-          <div className="bg-red-50 p-4 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Low Stock Alerts</p>
-                <p className="text-2xl font-bold text-red-600">{lowStockItems.length}</p>
-              </div>
-              <AlertTriangle className="text-red-500" size={32} />
-            </div>
-          </div>
-
-          <div className="bg-orange-50 p-4 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Waste This Week</p>
-                <p className="text-2xl font-bold text-orange-600">£{wasteValue.toFixed(2)}</p>
-              </div>
-              <Trash2 className="text-orange-500" size={32} />
-            </div>
-          </div>
-        </div>
-
-        {/* Performance Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Sales Performance by Location */}
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
-              <TrendingUp className="mr-2" size={20} />
-              Today's Sales Performance
-            </h3>
-            {['Eastham', 'Bethnal Green'].map(location => {
-              const locationSales = sales.filter(s => s.location === location && !s.endOfDay);
-              const received = locationSales.reduce((sum, s) => sum + s.receivedPortions, 0);
-              const sold = locationSales.reduce((sum, s) => sum + (s.receivedPortions - s.remainingPortions), 0);
-              const sellRate = received > 0 ? (sold / received * 100).toFixed(0) : 0;
-
-              return (
-                <div key={location} className="mb-3 p-3 bg-gray-50 rounded">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">{location}</span>
-                    <span className={`text-sm px-2 py-1 rounded ${
-                      sellRate >= 80 ? 'bg-green-100 text-green-800' :
-                      sellRate >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {sellRate}% sold
-                    </span>
-                  </div>
-                  <div className="text-xs text-gray-600 mt-1">
-                    Received: {received}p | Sold: {sold}p | Remaining: {received - sold}p
-                  </div>
-                </div>
-
-
-              );
-            })}
-          </div>
-
-          {/* Cold Room Stock - Improved */}
-  <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-3 text-blue-900">
-      🥶 Cold Room Stock (Remaining After Dispatch)
-    </h3>
-    {(() => {
-      // Get items with remaining portions
-      const coldRoomItems = prepLog.map(prep => {
-        // Find all dispatches for this item
-        const dispatches = dispatch.filter(d =>
-          d.dishName === prep.dishName &&
-          d.date === prep.date
-        );
-
-        const totalDispatched = dispatches.reduce((sum, d) =>
-          sum + (d.easthamSent || 0) + (d.bethnalSent || 0), 0
-        );
-
-        const remaining = prep.totalPortions - totalDispatched;
-
-        if (remaining > 0 && prep.status === 'prepared') {
-          return {
-            ...prep,
-            remainingPortions: remaining,
-            dispatchedPortions: totalDispatched,
-            age: Math.floor((new Date() - new Date(prep.timestamp)) / (1000 * 60 * 60 * 24)) // days
-          };
-        }
-        return null;
-      }).filter(item => item !== null);
-
-      // Group by dish
-      const groupedByDish = coldRoomItems.reduce((acc, item) => {
-        if (!acc[item.dishName]) {
-          acc[item.dishName] = {
-            dishName: item.dishName,
-            totalRemaining: 0,
-            oldestBatch: item.age,
-            batches: []
-          };
-        }
-        acc[item.dishName].totalRemaining += item.remainingPortions;
-        acc[item.dishName].oldestBatch = Math.max(acc[item.dishName].oldestBatch, item.age);
-        acc[item.dishName].batches.push({
-          preparedBy: item.preparedBy,
-          remaining: item.remainingPortions,
-          age: item.age,
-          date: item.date
-        });
-        return acc;
-      }, {});
-
-      return Object.keys(groupedByDish).length > 0 ? (
-        <div className="space-y-3">
-          {Object.values(groupedByDish)
-            .sort((a, b) => b.oldestBatch - a.oldestBatch) // Oldest first
-            .map((item, idx) => (
-            <div key={idx} className={`p-3 rounded border ${
-              item.oldestBatch >= 2 ? 'bg-red-50 border-red-300' :
-              item.oldestBatch >= 1 ? 'bg-yellow-50 border-yellow-300' :
-              'bg-white border-blue-300'
-            }`}>
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="font-medium">{item.dishName}</div>
-                  <div className="text-sm text-gray-600">
-                    Total in Cold Room: {item.totalRemaining} portions
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {item.batches.length} batch(es) • Oldest: {item.oldestBatch} day(s)
-                  </div>
-                </div>
-                {item.oldestBatch >= 1 && (
-                  <span className="text-xs font-medium text-red-600">
-                    ⚠️ Dispatch First!
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
-          <div className="text-xs text-gray-600 italic">
-            💡 Tip: Always dispatch older batches first to maintain freshness
-          </div>
-        </div>
-      ) : (
-        <p className="text-gray-600">No items in cold room - all fully dispatched!</p>
-      );
-    })()}
-  </div>
-          {/* Best Sellers */}
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
-              <TrendingUp className="mr-2" size={20} />
-              Today's Best Sellers
-            </h3>
-            {[...new Set(sales.map(s => s.dishName))]
-              .map(dish => {
-                const dishSales = sales.filter(s => s.dishName === dish);
-                const totalSold = dishSales.reduce((sum, s) => sum + (s.receivedPortions - s.remainingPortions), 0);
-                return { dish, sold: totalSold };
-              })
-              .sort((a, b) => b.sold - a.sold)
-              .slice(0, 3)
-              .map((item, index) => (
-                <div key={item.dish} className="flex justify-between items-center mb-2">
-                  <span className="text-sm">
-                    <span className="font-medium">{index + 1}.</span> {item.dish}
-                  </span>
-                  <span className="text-sm font-medium text-green-600">{item.sold}p</span>
-                </div>
-              ))
-            }
-          </div>
-
-          {/* Cost Analysis */}
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
-              <DollarSign className="mr-2" size={20} />
-              Profit Margins
-            </h3>
-            {[...new Set(recipes.map(r => r.dishName))].slice(0, 3).map(dish => {
-              const cost = calculateDishCost(dish);
-              const sellingPrice = 8; // Assuming £8 per portion
-              const margin = ((sellingPrice - cost * 0.16) / sellingPrice * 100).toFixed(0);
-
-              return (
-                <div key={dish} className="mb-3 p-3 bg-gray-50 rounded">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-sm">{dish}</span>
-                    <span className={`text-sm px-2 py-1 rounded ${
-                      margin >= 60 ? 'bg-green-100 text-green-800' :
-                      margin >= 40 ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {margin}% margin
-                    </span>
-                  </div>
-                  <div className="text-xs text-gray-600 mt-1">
-                    Cost: £{(cost * 0.16).toFixed(2)} | Sell: £{sellingPrice}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Old Stock Alert */}
-        {sales.filter(s => s.endOfDay && s.finalStock > 0).length > 0 && (
-          <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-6">
-            <h3 className="text-lg font-semibold text-red-800 mb-2 flex items-center">
-              <AlertTriangle className="mr-2" size={20} />
-              🚨 OLD STOCK ALERT - Action Required!
-            </h3>
-            <div className="space-y-2">
-              {sales.filter(s => s.endOfDay && s.finalStock > 0).map(item => (
-                <div key={item.id} className="flex justify-between items-center">
-                  <span className="text-red-700">{item.dishName} ({item.location})</span>
-                  <span className="text-red-600 font-medium">
-                    {item.finalStock} portions - PUT ON OFFER!
-                  </span>
-                </div>
-              ))}
-              <div className="mt-2 text-sm text-red-600">
-                → Go to "Old Stock Offers" tab for pricing strategies
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-4">Tomorrow's Cooking Forecast</h3>
-            <div className="space-y-3">
-              {generateForecast().map((forecast, index) => (
-                <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                  <div>
-                    <p className="font-medium">{forecast.dish}</p>
-                    <p className="text-sm text-gray-600">Cook: {forecast.qtyToCook}kg</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-gray-600">Cold Room: {forecast.coldRoomStock} | Remaining: {forecast.totalRemaining}</p>
-                    <p className="font-medium text-green-600">£{forecast.cost.toFixed(2)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-4">Recipe Cost Summary</h3>
-            <div className="space-y-3">
-            {getAllDishNames()
-.filter(dish => recipes.some(r => r.dishName === dish)) // Only show dishes with recipes
-.map(dish => (
-  <div key={dish} className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                  <span className="font-medium">{dish}</span>
-                  <div className="text-right">
-                    <p className="font-bold text-green-600">£{calculateDishCost(dish).toFixed(2)}/kg</p>
-                    <p className="text-sm text-gray-600">£{(calculateDishCost(dish) * 0.16).toFixed(2)}/portion</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-
 
   // ============================================
 // ADD ALL THESE HANDLER FUNCTIONS (around line 1500)
@@ -1761,165 +1525,6 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
 };
 
 
-
-  // Old Stock Manager Component - FIXED
-  const OldStockManager = () => {
-    const oldStockItems = sales.filter(s => s.endOfDay && s.finalStock > 0);
-    const groupedByLocation = oldStockItems.reduce((groups, item) => {
-      if (!groups[item.location]) groups[item.location] = [];
-      groups[item.location].push(item);
-      return groups;
-    }, {});
-
-    const totalOldStock = oldStockItems.reduce((sum, item) => sum + item.finalStock, 0);
-    const totalValue = oldStockItems.reduce((sum, item) => sum + (item.finalStock * 8), 0); // Assuming £8 per portion
-
-    return (
-      <div className="p-6">
-        <h2 className="text-2xl font-bold mb-6 flex items-center">
-          <AlertTriangle className="mr-2 text-orange-600" /> Old Stock Manager - PRIORITY OFFERS!
-        </h2>
-
-        {/* Summary */}
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
-          <h3 className="text-lg font-semibold text-orange-800 mb-3">🚨 ACTION REQUIRED: Old Stock Must Be Sold First!</h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Total Old Stock</p>
-              <p className="text-2xl font-bold text-orange-600">{totalOldStock} portions</p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Locations Affected</p>
-              <p className="text-2xl font-bold text-orange-600">{Object.keys(groupedByLocation).length}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Estimated Value</p>
-              <p className="text-2xl font-bold text-green-600">£{totalValue.toFixed(0)}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Days Old</p>
-              <p className="text-2xl font-bold text-red-600">1-2 days</p>
-            </div>
-          </div>
-        </div>
-
-        {totalOldStock === 0 ? (
-          <div className="text-center py-12">
-            <CheckCircle size={64} className="mx-auto mb-4 text-green-500" />
-            <h3 className="text-xl font-semibold text-green-600 mb-2">No Old Stock! 🎉</h3>
-            <p className="text-gray-600">All items were sold. Excellent inventory management!</p>
-          </div>
-        ) : (
-          <>
-            {/* Recommended Actions */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-              <h3 className="text-lg font-semibold text-yellow-800 mb-3">💡 Immediate Action Plan</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <h4 className="font-medium text-yellow-700 mb-2">🏷️ PRICING STRATEGIES:</h4>
-                  <ul className="space-y-1 text-yellow-700">
-                    <li>• <strong>20-30% OFF</strong> on day-old items</li>
-                    <li>• <strong>"Buy 2 Get 1 Free"</strong> combo offers</li>
-                    <li>• <strong>Lunch Special</strong> pricing (£5-6)</li>
-                    <li>• <strong>Staff Meal</strong> discounts (50% off)</li>
-                    <li>• <strong>Happy Hour</strong> 3-6pm deals</li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-medium text-yellow-700 mb-2">📢 MARKETING ACTIONS:</h4>
-                  <ul className="space-y-1 text-yellow-700">
-                    <li>• <strong>Social Media</strong> flash sale posts</li>
-                    <li>• <strong>"Chef's Special"</strong> menu board</li>
-                    <li>• <strong>WhatsApp</strong> customer alerts</li>
-                    <li>• <strong>Delivery Apps</strong> promo codes</li>
-                    <li>• <strong>Walk-in</strong> verbal offers</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            {/* Old Stock by Location */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {Object.entries(groupedByLocation).map(([location, items]) => (
-                <div key={location} className="bg-white border-2 border-orange-300 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold mb-4 text-orange-800">📍 {location} Old Stock</h3>
-                  <div className="space-y-3">
-                    {items.map(item => (
-                      <div key={item.id} className="border-l-4 border-orange-400 pl-4 py-2 bg-orange-50">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h4 className="font-medium text-gray-800">{item.dishName}</h4>
-                            <p className="text-sm text-gray-600">
-                              OLD STOCK: <span className="font-bold text-orange-600">{item.finalStock} portions</span>
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              Closed: {item.closedDate || 'Yesterday'} at {item.closedTime || 'EOD'}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              Original received: {item.receivedPortions}p | Sold: {item.receivedPortions - item.finalStock}p
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <span className="px-2 py-1 bg-red-200 text-red-800 rounded text-xs font-medium">
-                              URGENT
-                            </span>
-                            <div className="text-xs text-green-600 mt-1">
-                              Value: £{(item.finalStock * 8).toFixed(0)}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="mt-2 text-xs space-x-2">
-                          <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
-                            💰 Suggest: 25% OFF (£6 each)
-                          </span>
-                          <span className="bg-red-100 text-red-800 px-2 py-1 rounded">
-                            🚨 SELL TODAY!
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-4 p-3 bg-orange-100 rounded">
-                    <div className="text-sm">
-                      <div className="font-medium text-orange-800">Location Action Summary:</div>
-                      <div>Total Old Stock: <span className="font-bold">{items.reduce((sum, i) => sum + i.finalStock, 0)} portions</span></div>
-                      <div>Potential Revenue: <span className="font-bold text-green-600">£{(items.reduce((sum, i) => sum + i.finalStock, 0) * 6).toFixed(0)}</span> (at 25% off)</div>
-                      <div className="text-orange-700 font-medium mt-1">⚡ Priority: Create offers NOW!</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Suggested Offer Templates */}
-            <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-green-800 mb-3">📝 Ready-to-Use Offer Templates</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div className="bg-white p-3 rounded border">
-                  <h4 className="font-medium text-green-700 mb-2">🎯 SOCIAL MEDIA POST:</h4>
-                  <div className="bg-gray-50 p-2 rounded text-xs italic">
-                    "🔥 FLASH SALE ALERT! Chef's Special Today Only - Premium {oldStockItems[0]?.dishName || 'Biryani'} £6 (Was £8)
-                    Limited portions available! DM to reserve yours 📱
-                    #ChefSpecial #LimitedOffer #AuthenticFlavors"
-                  </div>
-                </div>
-                <div className="bg-white p-3 rounded border">
-                  <h4 className="font-medium text-green-700 mb-2">🪧 STORE BOARD:</h4>
-                  <div className="bg-gray-50 p-2 rounded text-xs italic">
-                    "TODAY'S CHEF SPECIAL
-                    {oldStockItems.map(item => `${item.dishName} - £6 (25% OFF)`).join('\n')}
-                    Made Yesterday - Same Great Taste!
-                    Available while stocks last"
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    );
-  };
 
   // Add Waste Tracking Component
   const WasteTracking = () => {
@@ -2289,7 +1894,7 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
         <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
           <div className="text-center mb-8">
             <ChefHat className="mx-auto text-blue-600 mb-4" size={48} />
-            <h1 className="text-2xl font-bold text-gray-900">Kitchen ERP System</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Rice Affair & Dozt</h1>
             <p className="text-gray-600 mt-2">Please login to continue</p>
           </div>
 
@@ -2342,10 +1947,11 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
           <div className="mt-6 p-4 bg-gray-50 rounded-lg">
             <p className="text-sm font-medium text-gray-700 mb-2">Login Credentials:</p>
             <div className="text-xs text-gray-600 space-y-1">
-              <div>👑 Owner: owner / owner123</div>
-              <div>💼 Manager: manager / manager123</div>
-              <div>👨‍🍳 Chef: vasanth / chef123</div>
-              <div>👥 Staff: eastham / staff123</div>
+
+
+              <div>👨‍🍳 Bethnal Staff: bethnal / staff123</div>
+              <div>👥 Eastham Staff: eastham / staff123</div>
+
             </div>
           </div>
         </div>
@@ -2362,7 +1968,7 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
     <div className="flex items-center justify-between">
       <div className="flex items-center space-x-4">
         <ChefHat className="text-blue-600" size={32} />
-        <h1 className="text-xl font-bold text-gray-900">WHEELFEAST KITCHEN MANAGEMENT</h1>
+        <h1 className="text-xl font-bold text-gray-900">RICE AFFAIR & DOZT KITCHEN MANAGEMENT</h1>
         <div className="flex space-x-2">
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
             shopStatuses['Eastham'] === 'open' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
@@ -2503,7 +2109,21 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
         </aside>
 
         <main className="flex-1">
-          {activeTab === 'dashboard' && <Dashboard />}
+        {activeTab === 'dashboard' && (
+<EnhancedMainDashboard
+  sales={sales}
+  dispatch={dispatch}
+  prepLog={prepLog}
+  inventory={inventory}
+  wasteLog={wasteLog}
+  recipes={recipes}
+  calculateDishCost={calculateDishCost}
+  shopStatuses={shopStatuses}
+  currentUser={currentUser}
+  userRole={userRole}
+  onQuickAction={handleQuickAction}
+/>
+)}
 
           {/* 3. ENHANCED PREP LOG COMPONENT - Replace your existing prep tab content */}
 
@@ -2536,315 +2156,29 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
       )}
 
 
-      {activeTab === 'sales' && (
-        <div className="p-6">
-          <h2 className="text-2xl font-bold mb-6 flex items-center">
-            <DollarSign className="mr-2" /> Sales & Stock Management
-          </h2>
+  {activeTab === 'sales' && (
+    <EnhancedSales
+      sales={sales}
+      setSales={setSales}
+      dispatch={dispatch}
+      setDispatch={setDispatch}
+      saveToDatabase={saveToDatabase}
+      getAllDishNames={getAllDishNames}
+    />
+  )}
 
-          {/* Location Selector & Shop Status */}
-          <div className="mb-6 bg-white border rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <label className="font-medium">Location:</label>
-                <select
-                  value={selectedSalesLocation}
-                  onChange={(e) => setSelectedSalesLocation(e.target.value)}
-                  className="px-4 py-2 border rounded-lg text-lg font-medium"
-                >
-                  <option value="Eastham">📍 Eastham</option>
-                  <option value="Bethnal Green">📍 Bethnal Green</option>
-                </select>
-              </div>
 
-              {/* Shop Status & Controls */}
-              <div className="flex items-center space-x-4">
-                <div className={`px-4 py-2 rounded-lg font-medium ${
-                  shopStatuses[selectedSalesLocation] === 'open'
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-red-100 text-red-800'
-                }`}>
-                  Status: {shopStatuses[selectedSalesLocation] === 'open' ? '🟢 OPEN' : '🔴 CLOSED'}
-                </div>
 
-                <button
-                  onClick={() => {
-                    if (shopStatuses[selectedSalesLocation] === 'open') {
-                      // Closing shop
-                      if (window.confirm(`Close ${selectedSalesLocation} for the day? Remaining stock will become OLD STOCK.`)) {
-                        handleEndOfDay(selectedSalesLocation);
-                        const newStatuses = { ...shopStatuses };
-                        newStatuses[selectedSalesLocation] = 'closed';
-                        setShopStatuses(newStatuses);
-                        localStorage.setItem('shopStatuses', JSON.stringify(newStatuses));
-                      }
-                    } else {
-                      // Opening shop
-                      const newStatuses = { ...shopStatuses };
-                      const newOpenTimes = { ...shopOpenTimes };
-                      newStatuses[selectedSalesLocation] = 'open';
-                      newOpenTimes[selectedSalesLocation] = new Date().toISOString();
-                      setShopStatuses(newStatuses);
-                      setShopOpenTimes(newOpenTimes);
-                      localStorage.setItem('shopStatuses', JSON.stringify(newStatuses));
-                      localStorage.setItem('shopOpenTimes', JSON.stringify(newOpenTimes));
-                    }
-                  }}
-                  className={`px-6 py-2 rounded-lg text-white font-medium ${
-                    shopStatuses[selectedSalesLocation] === 'closed'
-                      ? 'bg-green-600 hover:bg-green-700'
-                      : 'bg-red-600 hover:bg-red-700'
-                  }`}
-                >
-                  {shopStatuses[selectedSalesLocation] === 'closed' ? '🔓 OPEN SHOP' : '🔒 CLOSE SHOP'}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Stats */}
-          <div className="grid grid-cols-4 gap-4 mb-6">
-            <div className="bg-blue-50 p-4 rounded-lg text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                {sales.filter(s => s.location === selectedSalesLocation && !s.endOfDay)
-                  .reduce((sum, s) => sum + (s.receivedPortions - s.remainingPortions), 0)}
-              </div>
-              <div className="text-sm text-gray-600">Sold Today</div>
-            </div>
-            <div className="bg-green-50 p-4 rounded-lg text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {sales.filter(s => s.location === selectedSalesLocation && !s.endOfDay)
-                  .reduce((sum, s) => sum + s.remainingPortions, 0)}
-              </div>
-              <div className="text-sm text-gray-600">Current Stock</div>
-            </div>
-            <div className="bg-orange-50 p-4 rounded-lg text-center">
-              <div className="text-2xl font-bold text-orange-600">
-                {sales.filter(s => s.location === selectedSalesLocation && s.endOfDay && s.finalStock > 0)
-                  .reduce((sum, s) => sum + s.finalStock, 0)}
-              </div>
-              <div className="text-sm text-gray-600">Old Stock</div>
-            </div>
-            <div className="bg-red-50 p-4 rounded-lg text-center">
-              <div className="text-2xl font-bold text-red-600">
-                {menuItems.filter(item => {
-                  const sale = sales.find(s =>
-                    s.dishName === item.dish_name &&
-                    s.location === selectedSalesLocation &&
-                    !s.endOfDay
-                  );
-                  const oldStock = sales.filter(s =>
-                    s.dishName === item.dish_name &&
-                    s.location === selectedSalesLocation &&
-                    s.endOfDay &&
-                    s.finalStock > 0
-                  ).reduce((sum, s) => sum + s.finalStock, 0);
-                  return (sale ? sale.remainingPortions : 0) + oldStock === 0;
-                }).length}
-              </div>
-              <div className="text-sm text-gray-600">Out of Stock</div>
-            </div>
-          </div>
-
-          {/* Search Box */}
-          <div className="mb-4">
-            <input
-              type="text"
-              placeholder="🔍 Search menu items..."
-              value={stockSearchTerm}
-              onChange={(e) => setStockSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg text-lg"
-            />
-          </div>
-
-          {/* Main Stock Table */}
-          <div className="bg-white border rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full">
-                <thead className="bg-gray-800 text-white">
-                  <tr>
-                    <th className="px-4 py-3 text-left">Menu Item</th>
-                    <th className="px-4 py-3 text-center">Category</th>
-                    <th className="px-4 py-3 text-center">Old Stock</th>
-                    <th className="px-4 py-3 text-center">Received Today</th>
-                    <th className="px-4 py-3 text-center">Remaining</th>
-                    <th className="px-4 py-3 text-center">Sold Today</th>
-                    <th className="px-4 py-3 text-center">Total Available</th>
-                    <th className="px-4 py-3 text-center">Update Stock</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {menuItems
-                    .filter(item =>
-                      (item.location === selectedSalesLocation || item.location === 'Both') &&
-                      item.dish_name.toLowerCase().includes(stockSearchTerm.toLowerCase())
-                    )
-                    .map((menuItem, index) => {
-                      // Get current sales data
-                      const currentSale = sales.find(s =>
-                        s.dishName === menuItem.dish_name &&
-                        s.location === selectedSalesLocation &&
-                        !s.endOfDay
-                      );
-
-                      // Get old stock
-                      const oldStock = sales.filter(s =>
-                        s.dishName === menuItem.dish_name &&
-                        s.location === selectedSalesLocation &&
-                        s.endOfDay &&
-                        s.finalStock > 0
-                      ).reduce((sum, s) => sum + s.finalStock, 0);
-
-                      // Calculate values
-                      const dispatchedToday = currentSale ? currentSale.receivedPortions : 0;
-                      const remainingToday = currentSale ? currentSale.remainingPortions : 0;
-                      const soldToday = dispatchedToday - remainingToday;
-                      const totalAvailable = remainingToday + oldStock;
-
-                      // Determine row color
-                      let rowClass = '';
-                      if (totalAvailable === 0) rowClass = 'bg-red-50';
-                      else if (totalAvailable < 10) rowClass = 'bg-yellow-50';
-                      else if (oldStock > 0) rowClass = 'bg-orange-50';
-
-                      return (
-                        <tr key={index} className={rowClass}>
-                          <td className="px-4 py-3">
-                            <div className="font-medium">{menuItem.dish_name}</div>
-                            <div className="text-xs text-gray-500">
-                              {menuItem.price ? `£${menuItem.price}` : 'Price not set'}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <span className="px-2 py-1 bg-gray-100 rounded text-xs">
-                              {menuItem.category}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            {oldStock > 0 ? (
-                              <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded text-sm font-medium">
-                                {oldStock}p 🚨
-                              </span>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-center font-medium">
-                            {dispatchedToday > 0 ? (
-                              <span className="text-blue-600">{dispatchedToday}p</span>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            {editingSalesItem === currentSale?.id ? (
-                              <input
-                                type="number"
-                                value={newSalesEntry.remainingPortions}
-                                onChange={(e) => setNewSalesEntry(prev => ({
-                                  ...prev,
-                                  remainingPortions: e.target.value
-                                }))}
-                                className="w-20 px-2 py-1 border-2 border-blue-500 rounded text-center"
-                                autoFocus
-                                onKeyPress={(e) => {
-                                  if (e.key === 'Enter') {
-                                    handleUpdateSalesItem();
-                                  }
-                                }}
-                              />
-                            ) : (
-                              <span className={`font-medium ${
-                                remainingToday === 0 ? 'text-green-600' : 'text-gray-700'
-                              }`}>
-                                {remainingToday}p
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            {soldToday > 0 ? (
-                              <span className="text-green-600 font-bold">{soldToday}p</span>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <span className={`font-bold text-lg ${
-                              totalAvailable === 0 ? 'text-red-600' :
-                              totalAvailable < 10 ? 'text-yellow-600' :
-                              'text-green-600'
-                            }`}>
-                              {totalAvailable}p
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            {currentSale && editingSalesItem !== currentSale.id ? (
-                              <button
-                                onClick={() => handleEditSalesItem(currentSale)}
-                                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
-                              >
-                                Update
-                              </button>
-                            ) : editingSalesItem === currentSale?.id ? (
-                              <div className="flex space-x-1 justify-center">
-                                <button
-                                  onClick={handleUpdateSalesItem}
-                                  className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700"
-                                >
-                                  ✓
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setEditingSalesItem(null);
-                                    setNewSalesEntry({
-                                      location: '',
-                                      dishName: '',
-                                      receivedPortions: '',
-                                      remainingPortions: ''
-                                    });
-                                  }}
-                                  className="px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600"
-                                >
-                                  ✗
-                                </button>
-                              </div>
-                            ) : (
-                              <span className="text-gray-400 text-sm">Not dispatched</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Legend */}
-          <div className="mt-4 p-3 bg-gray-100 rounded-lg">
-            <div className="flex flex-wrap gap-4 text-xs">
-              <div className="flex items-center">
-                <div className="w-4 h-4 bg-red-50 border rounded mr-2"></div>
-                <span>Out of Stock</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-4 h-4 bg-yellow-50 border rounded mr-2"></div>
-                <span>Low Stock (&lt;10)</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-4 h-4 bg-orange-50 border rounded mr-2"></div>
-                <span>Has Old Stock (sell first!)</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-4 h-4 bg-white border rounded mr-2"></div>
-                <span>Good Stock</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-          {activeTab === 'old-stock' && <OldStockManager />}
+  {activeTab === 'old-stock' && (
+<OldStockOffersManager
+sales={sales}
+dispatch={dispatch}
+prepLog={prepLog}
+calculateDishCost={calculateDishCost}
+onCreateOffer={handleCreateOffer}
+onSendNotification={handleSendNotification}
+/>
+)}
 
           {activeTab === 'waste' && <WasteTracking />}
 
@@ -3145,158 +2479,18 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
       </div>
     )}
 
-          {/* Other tabs would go here */}
-          {activeTab === 'smart-planning' && (
-            <div className="p-6">
-              <h2 className="text-2xl font-bold mb-6 flex items-center">
-                <Calendar className="mr-2" /> Smart Planning & Old Stock Analysis
-              </h2>
-
-              {/* Location Selector */}
-              <div className="mb-6 flex space-x-4">
-                <select
-                  className="px-4 py-2 border rounded-lg"
-                  value={selectedLocation}
-                  onChange={(e) => setSelectedLocation(e.target.value)}
-                >
-                  <option value="all">All Locations</option>
-                  <option value="Eastham">Eastham</option>
-                  <option value="Bethnal Green">Bethnal Green</option>
-                </select>
-              </div>
-
-              {/* What to Cook First - Location Based */}
-              <div className="mb-8 bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-                <h3 className="text-lg font-semibold mb-4 text-yellow-900">
-                  🔥 Priority Cooking List {selectedLocation !== 'all' && `- ${selectedLocation}`}
-                </h3>
-                <div className="space-y-3">
-                  {getLocationBasedPriorities(selectedLocation).length > 0 ? (
-                    getLocationBasedPriorities(selectedLocation).map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between bg-white p-3 rounded-lg">
-                        <div>
-                          <span className="font-medium">{item.dish}</span>
-                          <span className="text-sm text-gray-600 ml-2">
-                            ({item.location})
-                          </span>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm text-red-600">Stock: {item.currentStock} portions</div>
-                          <div className="text-sm text-green-600">Need: {item.needed} portions</div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-600">All dishes are well-stocked for {selectedLocation === 'all' ? 'all locations' : selectedLocation}!</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Rest of existing smart planning content continues below... */}
-
-
-              {/* Old Stock Alert */}
-              {sales.filter(s => s.endOfDay && s.finalStock > 0).length > 0 && (
-                <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-6">
-                  <h3 className="text-lg font-semibold text-red-800 mb-3">🚨 PRIORITY: Old Stock Must Be Sold First!</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {['Eastham', 'Bethnal Green'].map(location => {
-                      const locationOldStock = sales.filter(s => s.location === location && s.endOfDay && s.finalStock > 0);
-                      return locationOldStock.length > 0 && (
-                        <div key={location} className="bg-white p-3 rounded border">
-                          <h4 className="font-medium text-red-700 mb-2">📍 {location} Old Stock:</h4>
-                          {locationOldStock.map(stock => (
-                            <div key={stock.id} className="text-sm">
-                              • <span className="font-medium">{stock.dishName}</span>: {stock.finalStock} portions (PUT ON OFFER!)
-                            </div>
-                          ))}
-                          <div className="mt-2 text-xs text-red-600 font-medium">
-                            → Go to "Old Stock Offers" tab for pricing strategies
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div className="bg-white border rounded-lg p-6">
-                <h3 className="text-lg font-semibold mb-4">Tomorrow's Intelligent Cooking Plan</h3>
-
-                <div className="space-y-4">
-                  {generateForecast().map((forecast, index) => {
-                    // Check if this dish has old stock
-                    const hasOldStock = sales.some(s => s.dishName === forecast.dish && s.endOfDay && s.finalStock > 0);
-                    const oldStockCount = sales.filter(s => s.dishName === forecast.dish && s.endOfDay && s.finalStock > 0)
-                                                 .reduce((sum, s) => sum + s.finalStock, 0);
-
-                    return (
-                      <div key={index} className={`border-2 rounded-lg p-4 ${
-                        hasOldStock ? 'bg-red-50 border-red-500' : 'bg-blue-50 border-blue-500'
-                      }`}>
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="flex items-center space-x-3">
-                            <h4 className="text-xl font-semibold">{forecast.dish}</h4>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              hasOldStock ? 'bg-red-200 text-red-800' : 'bg-blue-200 text-blue-800'
-                            }`}>
-                              {hasOldStock ? '🚨 HAS OLD STOCK' : (forecast.priority || 'MEDIUM')}
-                            </span>
-                            {hasOldStock && (
-                              <span className="px-2 py-1 bg-orange-200 text-orange-800 rounded text-xs font-medium">
-                                {oldStockCount}p OLD
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-green-600">£{(forecast.cost || 0).toFixed(2)}</div>
-                            <div className="text-sm text-gray-500">Cook: {forecast.qtyToCook || 0}kg</div>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                          <div className="bg-white p-3 rounded border">
-                            <div className="text-sm text-gray-600">Expected Demand</div>
-                            <div className="text-lg font-bold text-blue-600">{forecast.expectedDemand}p</div>
-                          </div>
-                          <div className="bg-white p-3 rounded border">
-                            <div className="text-sm text-gray-600">Cold Room Stock</div>
-                            <div className="text-lg font-bold text-purple-600">{forecast.coldRoomStock}p</div>
-                          </div>
-                          <div className="bg-white p-3 rounded border">
-                            <div className="text-sm text-gray-600">Location Remaining</div>
-                            <div className="text-lg font-bold text-orange-600">{forecast.totalRemaining}p</div>
-                          </div>
-                          <div className="bg-white p-3 rounded border">
-                            <div className="text-sm text-gray-600">Old Stock</div>
-                            <div className={`text-lg font-bold ${hasOldStock ? 'text-red-600' : 'text-green-600'}`}>
-                              {oldStockCount}p
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className={`p-4 rounded-lg text-center font-medium ${
-                          hasOldStock
-                            ? 'bg-red-100 text-red-800'
-                            : forecast.totalRemaining > forecast.expectedDemand * 0.5
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          📋 <strong>Action Plan:</strong> {
-                            hasOldStock
-                              ? `🚨 PRIORITY: Sell ${oldStockCount}p old stock first! Reduce new cooking or skip entirely.`
-                              : forecast.totalRemaining > forecast.expectedDemand * 0.5
-                                ? 'REDUCE COOKING - Use existing stock first'
-                                : 'NORMAL COOKING - Fresh prep needed'
-                          }
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
+    {activeTab === 'smart-planning' && (
+      <SmartPlanningDashboard
+        sales={sales}
+        dispatch={dispatch}
+        prepLog={prepLog}
+        inventory={inventory}
+        recipes={recipes}
+        getAllDishNames={getAllDishNames}
+        calculateDishCost={calculateDishCost}
+        onQuickPrep={handleQuickPrep}
+      />
+    )}
 
 
           {activeTab === 'users' && currentPermissions.tabs.includes('users') && <UserManagement />}

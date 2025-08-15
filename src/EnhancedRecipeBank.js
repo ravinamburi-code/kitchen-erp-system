@@ -1,4 +1,4 @@
-// EnhancedRecipeBank.js - COMPLETE UPDATED VERSION
+// EnhancedRecipeBank.js - UPDATED VERSION WITH MANUAL TOTAL PORTIONS
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import {
@@ -29,7 +29,6 @@ const EnhancedRecipeBank = ({
   const [showAddRecipe, setShowAddRecipe] = useState(false);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [customContainer, setCustomContainer] = useState('');
-  const [autoCalculatePortions, setAutoCalculatePortions] = useState(true);
 
   // New recipe form state
   const [newRecipe, setNewRecipe] = useState({
@@ -40,6 +39,7 @@ const EnhancedRecipeBank = ({
     customContainerSize: '',
     portionsPerKg: '',
     portionSize: '',
+    totalPortions: '', // Added manual total portions field
     category: 'Main Course',
     ingredients: [],
     notes: ''
@@ -57,19 +57,37 @@ const EnhancedRecipeBank = ({
     reorderLevel: ''
   });
 
+  // Autocomplete states
+  const [showIngredientDropdown, setShowIngredientDropdown] = useState(false);
+  const [filteredInventory, setFilteredInventory] = useState([]);
+
   const safeParseIngredients = (ingredients) => {
-  if (!ingredients || ingredients === '[]') return [];
-  if (Array.isArray(ingredients)) return ingredients;
-  if (typeof ingredients === 'string') {
-    try {
-      return JSON.parse(ingredients);
-    } catch (e) {
-      console.error('Error parsing ingredients:', e);
-      return [];
+    if (!ingredients || ingredients === '[]') return [];
+    if (Array.isArray(ingredients)) return ingredients;
+    if (typeof ingredients === 'string') {
+      try {
+        return JSON.parse(ingredients);
+      } catch (e) {
+        console.error('Error parsing ingredients:', e);
+        return [];
+      }
     }
-  }
-  return [];
-};
+    return [];
+  };
+
+  // Filter inventory items as user types
+  useEffect(() => {
+    if (newIngredient.name && inventory && inventory.length > 0) {
+      const filtered = inventory.filter(item =>
+        item.name && item.name.toLowerCase().includes(newIngredient.name.toLowerCase())
+      );
+      setFilteredInventory(filtered);
+      setShowIngredientDropdown(filtered.length > 0);
+    } else {
+      setFilteredInventory([]);
+      setShowIngredientDropdown(false);
+    }
+  }, [newIngredient.name, inventory]);
 
   // Load recipes from database
   useEffect(() => {
@@ -133,24 +151,27 @@ const EnhancedRecipeBank = ({
     return 0;
   };
 
-  // Calculate portions based on cooked weight and portion size
-  const calculatePortions = (cookedWeightValue = null, portionSizeValue = null) => {
-    const cookedWeight = cookedWeightValue !== null ? cookedWeightValue : newRecipe.cookedWeight;
-    const portionSize = portionSizeValue !== null ? portionSizeValue : newRecipe.portionSize;
+  // Calculate portions per kg based on total portions and cooked weight
+  const calculatePortionsPerKg = () => {
+    if (newRecipe.totalPortions && newRecipe.cookedWeight) {
+      const cookedWeight = parseFloat(newRecipe.cookedWeight);
+      const totalPortions = parseFloat(newRecipe.totalPortions);
 
-    if (cookedWeight && portionSize && autoCalculatePortions) {
-      const portionSizeGrams = parseFloat(portionSize);
-
-      if (portionSizeGrams > 0) {
-        const portionsPerKg = 1000 / portionSizeGrams;
-
-        setNewRecipe(prev => ({
-          ...prev,
-          portionsPerKg: portionsPerKg.toFixed(1)
-        }));
+      if (cookedWeight > 0 && totalPortions > 0) {
+        const portionsPerKg = totalPortions / cookedWeight;
+        return portionsPerKg.toFixed(1);
       }
     }
+    return '';
   };
+
+  // Update portions per kg when total portions or cooked weight changes
+  useEffect(() => {
+    const portionsPerKg = calculatePortionsPerKg();
+    if (portionsPerKg) {
+      setNewRecipe(prev => ({ ...prev, portionsPerKg }));
+    }
+  }, [newRecipe.totalPortions, newRecipe.cookedWeight]);
 
   // Load recipe for editing from database
   const startEditingRecipe = async (recipeData) => {
@@ -186,6 +207,7 @@ const EnhancedRecipeBank = ({
       customContainerSize: '',
       portionsPerKg: metadata?.portionsPerKg?.toString() || '6',
       portionSize: metadata?.portionSize?.toString() || '166',
+      totalPortions: metadata?.totalPortions?.toString() || '',
       category: recipeData.category || 'Main Course',
       ingredients: ingredients,
       notes: metadata?.notes || ''
@@ -193,7 +215,6 @@ const EnhancedRecipeBank = ({
 
     setEditingRecipe(recipeData.id);
     setShowAddRecipe(true);
-    setAutoCalculatePortions(false);
   };
 
   // Add ingredient to recipe
@@ -244,6 +265,8 @@ const EnhancedRecipeBank = ({
         unitCost: '',
         reorderLevel: ''
       });
+      setShowIngredientDropdown(false);
+      setFilteredInventory([]);
     }
   };
 
@@ -309,6 +332,7 @@ const EnhancedRecipeBank = ({
           containerSize: newRecipe.containerSize === 'Other' ? newRecipe.customContainerSize : newRecipe.containerSize,
           portionsPerKg: parseFloat(newRecipe.portionsPerKg) || 8,
           portionSize: parseFloat(newRecipe.portionSize) || 125,
+          totalPortions: parseFloat(newRecipe.totalPortions) || 0,
           category: newRecipe.category,
           notes: newRecipe.notes
         };
@@ -336,13 +360,25 @@ const EnhancedRecipeBank = ({
           customContainerSize: '',
           portionsPerKg: '',
           portionSize: '',
+          totalPortions: '',
           category: 'Main Course',
           ingredients: [],
           notes: ''
         });
+        setNewIngredient({
+          name: '',
+          quantity: '',
+          unit: 'kg',
+          isNewToInventory: false,
+          category: 'Dry Items',
+          supplier: 'Local Supplier',
+          unitCost: '',
+          reorderLevel: ''
+        });
         setShowAddRecipe(false);
         setEditingRecipe(null);
-        setAutoCalculatePortions(true);
+        setShowIngredientDropdown(false);
+        setFilteredInventory([]);
 
         alert(`✅ Recipe "${recipeMetadata.dishName}" ${editingRecipe ? 'updated' : 'added'} successfully!`);
       } catch (error) {
@@ -426,7 +462,6 @@ const EnhancedRecipeBank = ({
   const cancelEdit = () => {
     setShowAddRecipe(false);
     setEditingRecipe(null);
-    setAutoCalculatePortions(true);
     setNewRecipe({
       dishName: '',
       rawWeight: '',
@@ -435,10 +470,23 @@ const EnhancedRecipeBank = ({
       customContainerSize: '',
       portionsPerKg: '',
       portionSize: '',
+      totalPortions: '',
       category: 'Main Course',
       ingredients: [],
       notes: ''
     });
+    setNewIngredient({
+      name: '',
+      quantity: '',
+      unit: 'kg',
+      isNewToInventory: false,
+      category: 'Dry Items',
+      supplier: 'Local Supplier',
+      unitCost: '',
+      reorderLevel: ''
+    });
+    setShowIngredientDropdown(false);
+    setFilteredInventory([]);
   };
 
   return (
@@ -454,7 +502,6 @@ const EnhancedRecipeBank = ({
             onClick={() => {
               setEditingRecipe(null);
               setShowAddRecipe(true);
-              setAutoCalculatePortions(true);
             }}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center"
           >
@@ -522,11 +569,7 @@ const EnhancedRecipeBank = ({
                 type="number"
                 step="0.1"
                 value={newRecipe.cookedWeight}
-                onChange={(e) => {
-                  const newValue = e.target.value;
-                  setNewRecipe(prev => ({ ...prev, cookedWeight: newValue }));
-                  calculatePortions(newValue, newRecipe.portionSize);
-                }}
+                onChange={(e) => setNewRecipe(prev => ({ ...prev, cookedWeight: e.target.value }))}
                 className="w-full p-2 border rounded-lg"
                 placeholder="4.5"
               />
@@ -554,50 +597,40 @@ const EnhancedRecipeBank = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Portion Size (g) *</label>
+              <label className="block text-sm font-medium mb-1">Total Portions *</label>
               <input
                 type="number"
-                value={newRecipe.portionSize}
-                onChange={(e) => {
-                  const newValue = e.target.value;
-                  setNewRecipe(prev => ({ ...prev, portionSize: newValue }));
-                  calculatePortions(newRecipe.cookedWeight, newValue);
-                }}
+                value={newRecipe.totalPortions}
+                onChange={(e) => setNewRecipe(prev => ({ ...prev, totalPortions: e.target.value }))}
                 className="w-full p-2 border rounded-lg bg-white"
-                placeholder="160"
+                placeholder="27"
+                title="Enter the total number of portions"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">
-                Portions per kg
-                <input
-                  type="checkbox"
-                  checked={autoCalculatePortions}
-                  onChange={(e) => setAutoCalculatePortions(e.target.checked)}
-                  className="ml-2"
-                  title="Auto-calculate"
-                />
-                <span className="text-xs ml-1">Auto</span>
-              </label>
+              <label className="block text-sm font-medium mb-1">Portion Size (g) *</label>
+              <input
+                type="number"
+                value={newRecipe.portionSize}
+                onChange={(e) => setNewRecipe(prev => ({ ...prev, portionSize: e.target.value }))}
+                className="w-full p-2 border rounded-lg bg-white"
+                placeholder="167"
+                title="Enter portion size in grams"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Portions per kg</label>
               <input
                 type="number"
                 step="0.1"
                 value={newRecipe.portionsPerKg}
                 onChange={(e) => setNewRecipe(prev => ({ ...prev, portionsPerKg: e.target.value }))}
-                className={`w-full p-2 border rounded-lg ${autoCalculatePortions ? 'bg-gray-100' : 'bg-white'}`}
-                placeholder={autoCalculatePortions ? "Auto-calculated" : "Enter manually"}
-                readOnly={autoCalculatePortions}
+                className="w-full p-2 border rounded-lg bg-white"
+                placeholder="6.0"
+                title="Auto-calculated or enter manually"
               />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Total Portions</label>
-              <div className="p-2 border rounded-lg bg-gray-100">
-                {newRecipe.cookedWeight && newRecipe.portionsPerKg
-                  ? Math.floor(parseFloat(newRecipe.cookedWeight) * parseFloat(newRecipe.portionsPerKg))
-                  : '-'}
-              </div>
             </div>
 
             <div>
@@ -614,7 +647,7 @@ const EnhancedRecipeBank = ({
           <div className="mb-6">
             <h4 className="font-semibold mb-3 text-gray-700">Add Ingredients</h4>
             <div className="grid grid-cols-1 md:grid-cols-6 gap-3 p-4 bg-gray-50 rounded-lg">
-              <div>
+              <div className="relative">
                 <label className="text-xs font-medium">Ingredient Name *</label>
                 <input
                   type="text"
@@ -632,9 +665,48 @@ const EnhancedRecipeBank = ({
                       isNewToInventory: !exists
                     }));
                   }}
+                  onFocus={() => {
+                    if (inventory && inventory.length > 0) {
+                      setFilteredInventory(inventory);
+                      setShowIngredientDropdown(true);
+                    }
+                  }}
+                  onBlur={() => {
+                    // Delay to allow click on dropdown items
+                    setTimeout(() => setShowIngredientDropdown(false), 200);
+                  }}
                   className="w-full p-2 border rounded"
-                  placeholder="e.g. Chicken"
+                  placeholder="Search or add ingredient"
+                  autoComplete="off"
                 />
+
+                {/* Dropdown for inventory items */}
+                {showIngredientDropdown && filteredInventory.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {filteredInventory.map(item => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          setNewIngredient(prev => ({
+                            ...prev,
+                            name: item.name,
+                            unit: item.unit || 'kg',
+                            isNewToInventory: false
+                          }));
+                          setShowIngredientDropdown(false);
+                        }}
+                        className="w-full px-3 py-2 text-left hover:bg-blue-50 flex justify-between items-center"
+                      >
+                        <span className="font-medium">{item.name}</span>
+                        <span className="text-xs text-gray-500">
+                          {item.unit} • £{item.unitCost?.toFixed(2)}/{item.unit}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {newIngredient.name && inventory && inventory.length > 0 && !inventory.some(i =>
                   i.name && i.name.toLowerCase() === newIngredient.name.toLowerCase()
                 ) && (
@@ -794,8 +866,6 @@ const EnhancedRecipeBank = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {recipeBank.map(recipe => {
             const ingredients = safeParseIngredients(recipe.ingredients);
-
-
             const totalCost = calculateRecipeCostFromDB(recipe);
             const metadata = getRecipeMetadata(recipe.dish_name);
 
@@ -848,8 +918,8 @@ const EnhancedRecipeBank = ({
                         <span className="font-medium ml-2 text-green-600">{metadata.yield}%</span>
                       </div>
                       <div>
-                        <span className="text-gray-600">Portions/kg:</span>
-                        <span className="font-medium ml-2">{metadata.portionsPerKg}</span>
+                        <span className="text-gray-600">Total Portions:</span>
+                        <span className="font-medium ml-2">{metadata.totalPortions || '-'}</span>
                       </div>
                       <div>
                         <span className="text-gray-600">Portion Size:</span>

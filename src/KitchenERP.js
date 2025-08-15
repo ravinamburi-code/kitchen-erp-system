@@ -4,7 +4,7 @@ import {
   ChefHat, Package, Truck, BarChart3, Calendar,
   ShoppingCart, AlertTriangle, DollarSign, Users,
   Plus, Edit, Trash2, Save, X, CheckCircle, FileText,
-  TrendingUp, TrendingDown, Clock, Printer
+  TrendingUp, TrendingDown, Clock, Printer, CheckSquare
 } from 'lucide-react';
 
 // Imports
@@ -15,6 +15,8 @@ import EnhancedSales from './EnhancedSales';
 import SmartPlanningDashboard from './SmartPlanningDashboard';
 import OldStockOffersManager from './OldStockOffersManager';
 import EnhancedMainDashboard from './EnhancedMainDashboard';
+import ShopDailyChecks from './ShopDailyChecks';
+
 const KitchenERP = () => {
 
   // Load data from localStorage on mount
@@ -419,7 +421,7 @@ const getAllDishNames = () => {
       canSeeReports: true,
       canManageInventory: true,
       canAddStaff: true,
-      tabs: ['dashboard', 'smart-planning', 'prep', 'dispatch', 'sales', 'old-stock', 'waste', 'recipe-bank', 'inventory', 'procurement', 'reports', 'users']
+      tabs: ['dashboard', 'smart-planning', 'prep', 'dispatch', 'sales','daily-checks', 'old-stock', 'waste', 'recipe-bank', 'inventory', 'procurement', 'reports', 'users']
 
     },
     manager: {
@@ -427,21 +429,21 @@ const getAllDishNames = () => {
       canSeeReports: false,
       canManageInventory: true,
       canAddStaff: true,
-      tabs: ['dashboard', 'smart-planning', 'prep', 'dispatch', 'sales', 'old-stock', 'waste', 'recipe-bank', 'inventory', 'procurement']
+      tabs: ['dashboard', 'smart-planning', 'prep', 'dispatch', 'sales', 'daily-checks', 'old-stock', 'waste', 'recipe-bank', 'inventory', 'procurement']
     },
     chef: {
       canSeeCosts: false,
       canSeeReports: false,
       canManageInventory: false,
       canAddStaff: false,
-      tabs: ['prep', 'dispatch', 'smart-planning']
+      tabs: ['smart-planning','recipe-bank','prep', 'dispatch']
     },
     staff: {
       canSeeCosts: false,
       canSeeReports: false,
       canManageInventory: false,
       canAddStaff: false,
-      tabs: ['sales', 'old-stock']
+      tabs: ['sales', 'old-stock', 'daily-checks']
     }
   };
 
@@ -1707,6 +1709,7 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
     { id: 'prep', label: 'Prep Log', icon: ChefHat },
     { id: 'dispatch', label: 'Dispatch', icon: Truck },
     { id: 'sales', label: 'Sales Tracker', icon: DollarSign },
+    { id: 'daily-checks', label: 'Daily Checks', icon: CheckSquare },
     { id: 'old-stock', label: 'Old Stock Offers', icon: AlertTriangle },
     { id: 'waste', label: 'Waste Tracking', icon: Trash2 },
     { id: 'recipe-bank', label: 'Recipe Bank', icon: ChefHat },
@@ -2167,7 +2170,12 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
     />
   )}
 
-
+  {activeTab === 'daily-checks' && (
+    <ShopDailyChecks
+      currentUser={currentUser}
+      selectedLocation={selectedSalesLocation || 'Eastham'}
+    />
+  )}
 
   {activeTab === 'old-stock' && (
 <OldStockOffersManager

@@ -64,7 +64,7 @@ const ShopDailyChecks = ({
     }
   });
 
-  // Get current location's completions
+  // Get current location's completions - THIS IS THE KEY VARIABLE WE USE
   const currentCompletions = todaysCompletions[selectedLocation] || {
     opening: null,
     closing: null,
@@ -691,9 +691,25 @@ const ShopDailyChecks = ({
 
   return (
     <div className="p-6">
-      <h2 className="text-2xl font-bold mb-6 flex items-center">
-        <CheckSquare className="mr-2" /> Daily Operational Checks - {selectedLocation}
-      </h2>
+      {/* Header with Location Switcher */}
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold flex items-center">
+          <CheckSquare className="mr-2" /> Daily Operational Checks
+        </h2>
+
+        {/* Location Switcher */}
+        <div className="flex items-center space-x-2">
+          <MapPin size={20} className="text-gray-600" />
+          <select
+            value={selectedLocation}
+            onChange={(e) => setSelectedLocation(e.target.value)}
+            className="px-4 py-2 border-2 border-gray-300 rounded-lg font-medium focus:border-blue-500 focus:outline-none"
+          >
+            <option value="Eastham">Eastham</option>
+            <option value="Bethnal Green">Bethnal Green</option>
+          </select>
+        </div>
+      </div>
 
       {/* Shop Status Bar - Same as Sales Tracker */}
       <div className={`mb-6 p-4 rounded-lg flex items-center justify-between ${
@@ -704,42 +720,47 @@ const ShopDailyChecks = ({
         <div className="flex items-center space-x-4">
           <Store size={24} className={currentShopStatus?.isOpen ? 'text-green-600' : 'text-red-600'} />
           <div>
-            <h3 className={`font-bold text-lg ${
+            <h3 className={`font-bold text-xl ${
               currentShopStatus?.isOpen ? 'text-green-800' : 'text-red-800'
             }`}>
-              {selectedLocation} - {currentShopStatus?.isOpen ? 'OPEN' : 'CLOSED'}
+              📍 {selectedLocation} - {currentShopStatus?.isOpen ? 'OPEN FOR BUSINESS' : 'CLOSED'}
             </h3>
             {currentShopStatus?.openTime && (
               <p className="text-sm text-gray-600">
                 Opened at: {new Date(currentShopStatus.openTime).toLocaleTimeString()}
               </p>
             )}
+            {currentShopStatus?.closeTime && !currentShopStatus?.isOpen && (
+              <p className="text-sm text-gray-600">
+                Closed at: {new Date(currentShopStatus.closeTime).toLocaleTimeString()}
+              </p>
+            )}
           </div>
         </div>
 
         <div className="flex items-center space-x-3">
-          {/* Show checklist status */}
-          {!currentShopStatus?.isOpen && !todaysCompletions.opening && (
+          {/* Show checklist status - FIXED: Using currentCompletions */}
+          {!currentShopStatus?.isOpen && !currentCompletions.opening && (
             <span className="text-sm text-yellow-600 font-medium">
               ⚠️ Complete opening checklist first
             </span>
           )}
-          {currentShopStatus?.isOpen && !todaysCompletions.closing && (
+          {currentShopStatus?.isOpen && !currentCompletions.closing && (
             <span className="text-sm text-yellow-600 font-medium">
               ⚠️ Remember closing checklist
             </span>
           )}
 
-          {/* Shop Open/Close Button */}
+          {/* Shop Open/Close Button - FIXED: Using currentCompletions */}
           {currentShopStatus?.isOpen ? (
             <button
               onClick={handleCloseShop}
               className={`px-6 py-3 ${
-                todaysCompletions.closing
+                currentCompletions.closing
                   ? 'bg-red-600 hover:bg-red-700'
                   : 'bg-gray-400 cursor-not-allowed'
               } text-white rounded-lg flex items-center font-bold`}
-              title={!todaysCompletions.closing ? 'Complete closing checklist first' : 'Close shop'}
+              title={!currentCompletions.closing ? 'Complete closing checklist first' : 'Close shop'}
             >
               <Lock className="mr-2" size={20} />
               Close Shop
@@ -748,11 +769,11 @@ const ShopDailyChecks = ({
             <button
               onClick={handleOpenShop}
               className={`px-6 py-3 ${
-                todaysCompletions.opening
+                currentCompletions.opening
                   ? 'bg-green-600 hover:bg-green-700'
                   : 'bg-gray-400 cursor-not-allowed'
               } text-white rounded-lg flex items-center font-bold`}
-              title={!todaysCompletions.opening ? 'Complete opening checklist first' : 'Open shop'}
+              title={!currentCompletions.opening ? 'Complete opening checklist first' : 'Open shop'}
             >
               <Unlock className="mr-2" size={20} />
               Open Shop
@@ -761,20 +782,20 @@ const ShopDailyChecks = ({
         </div>
       </div>
 
-      {/* Status Overview */}
+      {/* Status Overview - FIXED: Using currentCompletions */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className={`p-4 rounded-lg border-2 ${
-          todaysCompletions.opening ? 'bg-green-50 border-green-400' : 'bg-yellow-50 border-yellow-400'
+          currentCompletions.opening ? 'bg-green-50 border-green-400' : 'bg-yellow-50 border-yellow-400'
         }`}>
           <div className="flex flex-col">
             <p className="text-sm font-medium text-gray-600">Opening Checklist</p>
-            {todaysCompletions.opening ? (
+            {currentCompletions.opening ? (
               <>
                 <p className="text-lg font-bold text-green-600">✅ Completed</p>
                 <p className="text-xs text-gray-500">
-                  {new Date(todaysCompletions.opening.completed_at).toLocaleTimeString()}
+                  {new Date(currentCompletions.opening.completed_at).toLocaleTimeString()}
                 </p>
-                <p className="text-xs text-gray-500">By: {todaysCompletions.opening.completed_by}</p>
+                <p className="text-xs text-gray-500">By: {currentCompletions.opening.completed_by}</p>
               </>
             ) : (
               <p className="text-lg font-bold text-yellow-600">⏳ Pending</p>
@@ -783,17 +804,17 @@ const ShopDailyChecks = ({
         </div>
 
         <div className={`p-4 rounded-lg border-2 ${
-          todaysCompletions.closing ? 'bg-green-50 border-green-400' : 'bg-gray-50 border-gray-300'
+          currentCompletions.closing ? 'bg-green-50 border-green-400' : 'bg-gray-50 border-gray-300'
         }`}>
           <div className="flex flex-col">
             <p className="text-sm font-medium text-gray-600">Closing Checklist</p>
-            {todaysCompletions.closing ? (
+            {currentCompletions.closing ? (
               <>
                 <p className="text-lg font-bold text-green-600">✅ Completed</p>
                 <p className="text-xs text-gray-500">
-                  {new Date(todaysCompletions.closing.completed_at).toLocaleTimeString()}
+                  {new Date(currentCompletions.closing.completed_at).toLocaleTimeString()}
                 </p>
-                <p className="text-xs text-gray-500">By: {todaysCompletions.closing.completed_by}</p>
+                <p className="text-xs text-gray-500">By: {currentCompletions.closing.completed_by}</p>
               </>
             ) : (
               <p className="text-lg font-bold text-gray-400">⏳ Pending</p>
@@ -815,7 +836,7 @@ const ShopDailyChecks = ({
             <p className="text-lg font-bold text-purple-600">
               {currentUser?.name || currentUser?.username || 'Not logged in'}
             </p>
-            <p className="text-xs text-gray-500">{new Date().toLocaleDateString()}</p>
+            <p className="text-xs text-gray-500">{selectedLocation} • {new Date().toLocaleDateString()}</p>
           </div>
         </div>
       </div>
@@ -846,16 +867,16 @@ const ShopDailyChecks = ({
         })}
       </div>
 
-      {/* Opening Checklist Tab */}
+      {/* Opening Checklist Tab - ALL FIXED */}
       {activeTab === 'opening' && (
         <div className="bg-white border rounded-lg p-6">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-xl font-semibold">Opening Checklist</h3>
+            <h3 className="text-xl font-semibold">Opening Checklist - {selectedLocation}</h3>
             <div className="flex items-center space-x-3">
               <div className="text-lg font-bold">
                 {calculateProgress(openingChecklist, openingProgress)}%
               </div>
-              {!todaysCompletions.opening && (
+              {!currentCompletions.opening && (
                 <button
                   onClick={() => setShowAddItem(!showAddItem)}
                   className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center"
@@ -867,16 +888,16 @@ const ShopDailyChecks = ({
             </div>
           </div>
 
-          {todaysCompletions.opening && (
+          {currentCompletions.opening && (
             <div className="mb-4 p-4 bg-green-100 border border-green-400 rounded-lg">
               <p className="text-green-800 font-medium">
-                ✅ Completed at {new Date(todaysCompletions.opening.completed_at).toLocaleTimeString()}
-                by {todaysCompletions.opening.completed_by}
+                ✅ Completed at {new Date(currentCompletions.opening.completed_at).toLocaleTimeString()}
+                by {currentCompletions.opening.completed_by}
               </p>
             </div>
           )}
 
-          {showAddItem && !todaysCompletions.opening && (
+          {showAddItem && !currentCompletions.opening && (
             <div className="mb-4 p-4 bg-blue-50 border border-blue-300 rounded-lg">
               <div className="flex items-center space-x-2">
                 <input
@@ -934,14 +955,14 @@ const ShopDailyChecks = ({
                   type="checkbox"
                   checked={openingProgress[item.id] || false}
                   onChange={() => handleChecklistToggle('opening', item.id)}
-                  disabled={todaysCompletions.opening !== null}
+                  disabled={currentCompletions.opening !== null}
                   className="w-5 h-5 text-green-600 rounded cursor-pointer"
                 />
               </div>
             ))}
           </div>
 
-          {!todaysCompletions.opening && (
+          {!currentCompletions.opening && (
             <>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -968,16 +989,16 @@ const ShopDailyChecks = ({
         </div>
       )}
 
-      {/* Closing Checklist Tab */}
+      {/* Closing Checklist Tab - ALL FIXED */}
       {activeTab === 'closing' && (
         <div className="bg-white border rounded-lg p-6">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-xl font-semibold">Closing Checklist</h3>
+            <h3 className="text-xl font-semibold">Closing Checklist - {selectedLocation}</h3>
             <div className="flex items-center space-x-3">
               <div className="text-lg font-bold">
                 {calculateProgress(closingChecklist, closingProgress)}%
               </div>
-              {!todaysCompletions.closing && (
+              {!currentCompletions.closing && (
                 <button
                   onClick={() => {
                     setShowAddItem(!showAddItem);
@@ -992,16 +1013,16 @@ const ShopDailyChecks = ({
             </div>
           </div>
 
-          {todaysCompletions.closing && (
+          {currentCompletions.closing && (
             <div className="mb-4 p-4 bg-green-100 border border-green-400 rounded-lg">
               <p className="text-green-800 font-medium">
-                ✅ Completed at {new Date(todaysCompletions.closing.completed_at).toLocaleTimeString()}
-                by {todaysCompletions.closing.completed_by}
+                ✅ Completed at {new Date(currentCompletions.closing.completed_at).toLocaleTimeString()}
+                by {currentCompletions.closing.completed_by}
               </p>
             </div>
           )}
 
-          {showAddItem && !todaysCompletions.closing && (
+          {showAddItem && !currentCompletions.closing && (
             <div className="mb-4 p-4 bg-blue-50 border border-blue-300 rounded-lg">
               <div className="flex items-center space-x-2">
                 <input
@@ -1051,14 +1072,14 @@ const ShopDailyChecks = ({
                   type="checkbox"
                   checked={closingProgress[item.id] || false}
                   onChange={() => handleChecklistToggle('closing', item.id)}
-                  disabled={todaysCompletions.closing !== null}
+                  disabled={currentCompletions.closing !== null}
                   className="w-5 h-5 text-green-600 rounded cursor-pointer"
                 />
               </div>
             ))}
           </div>
 
-          {!todaysCompletions.closing && (
+          {!currentCompletions.closing && (
             <>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1085,7 +1106,7 @@ const ShopDailyChecks = ({
         </div>
       )}
 
-      {/* Temperature Logs Tab */}
+      {/* Temperature Logs Tab - No changes needed */}
       {activeTab === 'temperature' && (
         <div className="bg-white border rounded-lg p-6">
           <div className="mb-4 flex items-center justify-between">
@@ -1250,10 +1271,10 @@ const ShopDailyChecks = ({
         </div>
       )}
 
-      {/* History Tab */}
+      {/* History Tab - No changes needed */}
       {activeTab === 'history' && (
         <div className="bg-white border rounded-lg p-6">
-          <h3 className="text-xl font-semibold mb-6">Recent History (Last 7 Days)</h3>
+          <h3 className="text-xl font-semibold mb-6">Recent History - {selectedLocation} (Last 7 Days)</h3>
 
           {/* Checklist History */}
           <div className="mb-8">

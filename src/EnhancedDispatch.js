@@ -1,3 +1,4 @@
+// Fixed EnhancedDispatch.js - CRITICAL DATE FIELD FIXES
 import React, { useState, useEffect } from 'react';
 import { Truck, Plus, X, ChefHat, AlertCircle, Clock, Package, Calendar, Snowflake, Box } from 'lucide-react';
 
@@ -32,6 +33,9 @@ const EnhancedDispatch = ({
 
   // State for cold room inventory
   const [coldRoomStock, setColdRoomStock] = useState({});
+  const getTodayDate = () => {
+   return new Date().toISOString().split('T')[0];
+ };
 
   const [newDispatchEntry, setNewDispatchEntry] = useState({
     dishName: '',
@@ -199,9 +203,10 @@ const EnhancedDispatch = ({
     alert(alertMessage);
   };
 
-  // Handle dispatch submission
-  const handleDispatchSubmit = async () => {
+  // Fixed handleDispatchSubmit function for EnhancedDispatch.js
+  // Replace your existing handleDispatchSubmit function with this one
 
+  const handleDispatchSubmit = async () => {
     if (!newDispatchEntry.dishName) {
       alert('❌ Please select a dish or item name');
       return;
@@ -217,7 +222,11 @@ const EnhancedDispatch = ({
     const coldRoom = parseInt(newDispatchEntry.coldRoomStock) || 0;
     const total = parseInt(newDispatchEntry.totalCooked) || (eastham + bethnal + coldRoom);
 
-    // For cold room dispatch, validate against available stock
+    // CRITICAL: Use consistent date format
+    const todayDate = new Date().toISOString().split('T')[0];
+    const currentTimestamp = new Date().toISOString();
+
+    // Validation for cold room dispatch
     if (dispatchMode === 'coldroom') {
       const availableStock = getColdRoomStockForDish(newDispatchEntry.dishName);
       const totalRequested = eastham + bethnal;
@@ -239,11 +248,11 @@ const EnhancedDispatch = ({
       }
     }
 
-    // Find batch info for cold room dispatch
+    // Setup batch info
     let batchInfo = {
       batchNumber: newDispatchEntry.batchNumber || `M-${Date.now()}`,
       expiryDate: newDispatchEntry.expiryDate,
-      dateMade: newDispatchEntry.dateMade || new Date().toISOString(),
+      dateMade: newDispatchEntry.dateMade || currentTimestamp,
       preparedBy: newDispatchEntry.preparedBy || 'Direct Dispatch',
       containerSize: newDispatchEntry.containerSize
     };
@@ -255,10 +264,11 @@ const EnhancedDispatch = ({
       }
     }
 
+    // Create dispatch entry with consistent date
     const newEntry = {
       id: dispatch && dispatch.length > 0 ? Math.max(...dispatch.map(d => d.id)) + 1 : 1,
-  date: new Date().toISOString().split('T')[0], // Make sure this is TODAY
-      dispatchTime: new Date().toISOString(),
+      date: todayDate, // CRITICAL: Always use consistent date format
+      dispatchTime: currentTimestamp,
       dishName: newDispatchEntry.dishName,
       totalCooked: dispatchMode === 'coldroom' ? (eastham + bethnal) : total,
       easthamSent: eastham,
@@ -273,11 +283,10 @@ const EnhancedDispatch = ({
       itemType: newDispatchEntry.itemType
     };
 
-    // Save to database
-    const dbEntry = {
+    // Save dispatch to database
+    const dbDispatchEntry = {
       dish_name: newEntry.dishName,
-      date: new Date().toISOString().split('T')[0], // ADD THIS LINE
-
+      date: todayDate, // CRITICAL: Ensure date is saved
       total_cooked: newEntry.totalCooked,
       eastham_sent: newEntry.easthamSent,
       bethnal_sent: newEntry.bethnalSent,
@@ -293,9 +302,10 @@ const EnhancedDispatch = ({
     };
 
     if (saveToDatabase && typeof saveToDatabase === 'function') {
-      await saveToDatabase('dispatch', dbEntry);
+      await saveToDatabase('dispatch', dbDispatchEntry);
     }
-    // Create sales entries for locations
+
+    // Create sales entry for Eastham
     if (eastham > 0) {
       const easthamSalesEntry = {
         id: sales && sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 100 : 100,
@@ -303,7 +313,7 @@ const EnhancedDispatch = ({
         location: 'Eastham',
         receivedPortions: eastham,
         remainingPortions: eastham,
-        date: new Date().toISOString().split('T')[0],
+        date: todayDate, // CRITICAL: Use consistent date
         time: new Date().toLocaleTimeString(),
         updatedBy: 'Auto-Created from Dispatch',
         autoCreated: true,
@@ -319,13 +329,15 @@ const EnhancedDispatch = ({
         isManualEntry: dispatchMode === 'manual'
       };
 
+      // Save to database with ALL required fields
       if (saveToDatabase && typeof saveToDatabase === 'function') {
         await saveToDatabase('sales', {
           dish_name: easthamSalesEntry.dishName,
           location: easthamSalesEntry.location,
           received_portions: easthamSalesEntry.receivedPortions,
           remaining_portions: easthamSalesEntry.remainingPortions,
-          date: easthamSalesEntry.date,  // <-- ADD THIS LINE - CRITICAL!
+          date: todayDate, // CRITICAL: Always include date field
+          time: easthamSalesEntry.time,
           updated_by: easthamSalesEntry.updatedBy,
           auto_created: true,
           batch_number: easthamSalesEntry.batchNumber,
@@ -337,13 +349,15 @@ const EnhancedDispatch = ({
           dispatch_mode: dispatchMode,
           from_cold_room: dispatchMode === 'coldroom',
           is_non_food: dispatchMode === 'inventory',
-          is_manual_entry: dispatchMode === 'manual'
+          is_manual_entry: dispatchMode === 'manual',
+          storage_location: 'Fridge'
         });
       }
 
       setSales && setSales(prev => [...prev, easthamSalesEntry]);
     }
 
+    // Create sales entry for Bethnal Green
     if (bethnal > 0) {
       const bethnalSalesEntry = {
         id: sales && sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 200 : 200,
@@ -351,7 +365,7 @@ const EnhancedDispatch = ({
         location: 'Bethnal Green',
         receivedPortions: bethnal,
         remainingPortions: bethnal,
-        date: new Date().toISOString().split('T')[0],
+        date: todayDate, // CRITICAL: Use consistent date
         time: new Date().toLocaleTimeString(),
         updatedBy: 'Auto-Created from Dispatch',
         autoCreated: true,
@@ -367,13 +381,15 @@ const EnhancedDispatch = ({
         isManualEntry: dispatchMode === 'manual'
       };
 
+      // Save to database with ALL required fields
       if (saveToDatabase && typeof saveToDatabase === 'function') {
         await saveToDatabase('sales', {
           dish_name: bethnalSalesEntry.dishName,
           location: bethnalSalesEntry.location,
           received_portions: bethnalSalesEntry.receivedPortions,
           remaining_portions: bethnalSalesEntry.remainingPortions,
-          date: bethnalSalesEntry.date,  // <-- ADD THIS LINE - CRITICAL!
+          date: todayDate, // CRITICAL: Always include date field
+          time: bethnalSalesEntry.time,
           updated_by: bethnalSalesEntry.updatedBy,
           auto_created: true,
           batch_number: bethnalSalesEntry.batchNumber,
@@ -385,12 +401,14 @@ const EnhancedDispatch = ({
           dispatch_mode: dispatchMode,
           from_cold_room: dispatchMode === 'coldroom',
           is_non_food: dispatchMode === 'inventory',
-          is_manual_entry: dispatchMode === 'manual'
+          is_manual_entry: dispatchMode === 'manual',
+          storage_location: 'Fridge'
         });
       }
 
       setSales && setSales(prev => [...prev, bethnalSalesEntry]);
     }
+
     // Mark prep item as processed if from prep
     if (dispatchMode === 'prep' && newDispatchEntry.prepId && setPrepLog) {
       setPrepLog(prev => prev.map(p =>
@@ -402,7 +420,6 @@ const EnhancedDispatch = ({
     if (setDispatch) {
       setDispatch(prev => {
         const updatedDispatch = [...prev, newEntry];
-        // Force immediate recalculation
         setTimeout(() => calculateColdRoomInventory(), 0);
         return updatedDispatch;
       });

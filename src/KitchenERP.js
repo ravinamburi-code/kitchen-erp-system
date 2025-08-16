@@ -181,11 +181,95 @@ const KitchenERP = () => {
 
     loadInventoryFromDatabase();
   }, []);
+  // Fixed data loading section for KitchenERP.js
+  // Replace the loadAllDataFromDatabase function with this fixed version
 
-  // Load all data from database
   useEffect(() => {
     const loadAllDataFromDatabase = async () => {
       console.log('Loading all data from Supabase...');
+
+      // Load dispatch with proper date handling
+      try {
+        const { data: dispatchData } = await supabase
+          .from('dispatch')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (dispatchData) {
+          const formattedDispatch = dispatchData.map(item => ({
+            id: item.id,
+            // CRITICAL FIX: Ensure date is always set properly
+            date: item.date || (item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0]),
+            dishName: item.dish_name,
+            totalCooked: item.total_cooked,
+            easthamSent: item.eastham_sent,
+            bethnalSent: item.bethnal_sent,
+            coldRoomStock: item.cold_room_stock,
+            batchNumber: item.batch_number,
+            expiryDate: item.expiry_date,
+            dateMade: item.date_made,
+            preparedBy: item.prepared_by,
+            containerSize: item.container_size,
+            dispatchTime: item.dispatch_time || item.created_at,
+            dispatchType: item.dispatch_type || 'prep',
+            itemType: item.item_type || 'food'
+          }));
+          setDispatch(formattedDispatch);
+          console.log('Dispatch loaded:', formattedDispatch.length, 'items');
+          console.log('Sample dispatch date:', formattedDispatch[0]?.date); // Debug log
+        }
+      } catch (error) {
+        console.error('Error loading dispatch:', error);
+      }
+
+      // Load sales with proper date handling
+      try {
+        const { data: salesData } = await supabase
+          .from('sales')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (salesData) {
+          const formattedSales = salesData.map(item => ({
+            id: item.id,
+            dishName: item.dish_name,
+            location: item.location,
+            receivedPortions: item.received_portions || 0,
+            remainingPortions: item.remaining_portions || 0,
+            // CRITICAL FIX: Ensure date is always set properly
+            date: item.date || (item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0]),
+            time: item.time || (item.created_at ? new Date(item.created_at).toLocaleTimeString() : new Date().toLocaleTimeString()),
+            updatedBy: item.updated_by,
+            autoCreated: item.auto_created || false,
+            endOfDay: item.end_of_day || false,
+            finalStock: item.final_stock || 0,
+            dispatchMode: item.dispatch_mode || 'prep',
+            fromColdRoom: item.from_cold_room || false,
+            isNonFood: item.is_non_food || false,
+            isManualEntry: item.is_manual_entry || false,
+            itemType: item.item_type || 'food',
+            batchNumber: item.batch_number,
+            expiryDate: item.expiry_date,
+            dateMade: item.date_made,
+            preparedBy: item.prepared_by,
+            containerSize: item.container_size,
+            storageLocation: item.storage_location || 'Fridge',
+            closedDate: item.closed_date,
+            closedTime: item.closed_time,
+            soldPortions: item.sold_portions
+          }));
+          setSales(formattedSales);
+          console.log('Sales loaded:', formattedSales.length, 'items');
+          console.log('Sample sales date:', formattedSales[0]?.date); // Debug log
+
+          // Log items with today's date for debugging
+          const todayDate = new Date().toISOString().split('T')[0];
+          const todaysSales = formattedSales.filter(s => s.date === todayDate);
+          console.log(`Sales for today (${todayDate}):`, todaysSales.length, 'items');
+        }
+      } catch (error) {
+        console.error('Error loading sales:', error);
+      }
 
       // Load prep log
       try {
@@ -197,7 +281,7 @@ const KitchenERP = () => {
         if (prepData) {
           const formattedPrep = prepData.map(item => ({
             id: item.id,
-            date: item.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+            date: item.date || (item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0]),
             timestamp: item.timestamp || item.created_at,
             prepTime: item.prep_time,
             dishName: item.dish_name,
@@ -207,7 +291,14 @@ const KitchenERP = () => {
             containerSize: item.container_size,
             totalPortions: item.total_portions,
             processed: item.processed || false,
-            status: item.status || 'fresh'
+            status: item.status || 'fresh',
+            batchNumber: item.batch_number,
+            dateMade: item.date_made,
+            expiryDate: item.expiry_date,
+            rawWeight: item.raw_weight,
+            actualYield: item.actual_yield,
+            temperature: item.temperature,
+            notes: item.notes
           }));
           setPrepLog(formattedPrep);
           console.log('Prep log loaded:', formattedPrep.length, 'items');
@@ -215,79 +306,6 @@ const KitchenERP = () => {
       } catch (error) {
         console.error('Error loading prep log:', error);
       }
-      // Load dispatch
-  try {
-    const { data: dispatchData } = await supabase
-      .from('dispatch')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (dispatchData) {
-      const formattedDispatch = dispatchData.map(item => ({
-        id: item.id,
-        date: item.date || item.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-        dishName: item.dish_name,
-        totalCooked: item.total_cooked,
-        easthamSent: item.eastham_sent,
-        bethnalSent: item.bethnal_sent,
-        coldRoomStock: item.cold_room_stock,
-        batchNumber: item.batch_number,
-        expiryDate: item.expiry_date,
-        dateMade: item.date_made,
-        preparedBy: item.prepared_by,
-        containerSize: item.container_size,
-        dispatchTime: item.dispatch_time || item.created_at,
-        dispatchType: item.dispatch_type || 'prep',
-        itemType: item.item_type || 'food'
-      }));
-      setDispatch(formattedDispatch);
-      console.log('Dispatch loaded:', formattedDispatch.length, 'items');
-    }
-  } catch (error) {
-    console.error('Error loading dispatch:', error);
-  } // <-- THIS CLOSING BRACE WAS MISSING
-
-  // Load sales
-  try {
-    const { data: salesData } = await supabase
-      .from('sales')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (salesData) {
-      const formattedSales = salesData.map(item => ({
-        id: item.id,
-        dishName: item.dish_name,
-        location: item.location,
-        receivedPortions: item.received_portions || 0,
-        remainingPortions: item.remaining_portions || 0,
-        date: item.date || item.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-        time: new Date(item.created_at).toLocaleTimeString(),
-        updatedBy: item.updated_by,
-        autoCreated: item.auto_created || false,
-        endOfDay: item.end_of_day || false,
-        finalStock: item.final_stock || 0,
-        dispatchMode: item.dispatch_mode || 'prep',
-        fromColdRoom: item.from_cold_room || false,
-        isNonFood: item.is_non_food || false,
-        isManualEntry: item.is_manual_entry || false,
-        itemType: item.item_type || 'food',
-        batchNumber: item.batch_number,
-        expiryDate: item.expiry_date,
-        dateMade: item.date_made,
-        preparedBy: item.prepared_by,
-        containerSize: item.container_size,
-        storageLocation: item.storage_location || 'Fridge',
-        closedDate: item.closed_date,
-        closedTime: item.closed_time,
-        soldPortions: item.sold_portions
-      }));
-      setSales(formattedSales);
-      console.log('Sales loaded:', formattedSales.length, 'items');
-    }
-  } catch (error) {
-    console.error('Error loading sales:', error);
-  }
 
       // Load waste log
       try {
@@ -299,8 +317,8 @@ const KitchenERP = () => {
         if (wasteData) {
           const formattedWaste = wasteData.map(item => ({
             id: item.id,
-            date: item.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-            time: new Date(item.created_at).toLocaleTimeString(),
+            date: item.date || (item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0]),
+            time: item.time || (item.created_at ? new Date(item.created_at).toLocaleTimeString() : new Date().toLocaleTimeString()),
             dishName: item.dish_name,
             location: item.location,
             portions: item.portions,
@@ -318,7 +336,6 @@ const KitchenERP = () => {
 
     loadAllDataFromDatabase();
   }, []);
-
   // Load initial data from Supabase on app mount
   useEffect(() => {
     const loadInitialData = async () => {

@@ -19,31 +19,6 @@ import ShopDailyChecks from './ShopDailyChecks';
 
 const KitchenERP = () => {
 
-  // Load data from localStorage on mount
-  const loadFromStorage = (key, defaultValue) => {
-    const stored = localStorage.getItem(key);
-    return stored ? JSON.parse(stored) : defaultValue;
-  };
-
-  // Load data from database
-  const loadFromDatabase = async (table, defaultValue) => {
-    try {
-      const { data, error } = await supabase
-        .from(table)
-        .select('*');
-
-      if (error) throw error;
-      return data || defaultValue;
-    } catch (error) {
-      console.error(`Error loading ${table}:`, error);
-      // Fall back to localStorage
-      return loadFromStorage(table, defaultValue);
-    }
-  };
-
-  // In your main KitchenERP component, add these handlers:
-
-
   // Save to database function
   const saveToDatabase = async (table, data) => {
     try {
@@ -57,15 +32,16 @@ const KitchenERP = () => {
     }
   };
 
-
-  // Instead of hardcoded recipes, start with empty array
+  // State initialization
   const [recipes, setRecipes] = useState([]);
-
   const [allDishNames, setAllDishNames] = useState([]);
+  const [prepLog, setPrepLog] = useState([]);
+  const [dispatch, setDispatch] = useState([]);
+  const [sales, setSales] = useState([]);
+  const [wasteLog, setWasteLog] = useState([]);
+  const [inventory, setInventory] = useState([]);
 
-
-
-  // ADD this entire useEffect after your recipes loading useEffect:
+  // Load dish names from database
   useEffect(() => {
     const loadAllDishNames = async () => {
       try {
@@ -79,7 +55,6 @@ const KitchenERP = () => {
         if (data && data.length > 0) {
           const dishNames = data.map(d => d.dish_name).filter(name => name).sort();
           setAllDishNames(dishNames);
-          localStorage.setItem('allDishNames', JSON.stringify(dishNames));
           console.log('Loaded', dishNames.length, 'dish names from database');
         }
       } catch (error) {
@@ -103,7 +78,6 @@ const KitchenERP = () => {
         if (error) throw error;
 
         if (data) {
-          // Convert database format to app format
           const formattedRecipes = [];
           let recipeId = 1;
 
@@ -125,9 +99,8 @@ const KitchenERP = () => {
           setRecipes(formattedRecipes);
           console.log('Loaded', formattedRecipes.length, 'recipe ingredients from', data.length, 'dishes');
 
-          // Also store dish names for dropdowns
           const dishNames = data.map(d => d.dish_name).sort();
-          localStorage.setItem('allDishNames', JSON.stringify(dishNames));
+          setAllDishNames(dishNames);
         }
       } catch (error) {
         console.error('Error loading recipes:', error);
@@ -137,35 +110,26 @@ const KitchenERP = () => {
     loadRecipesFromDatabase();
   }, []);
 
+  // LOGIN STATE - Keeping localStorage for auth only
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [loginError, setLoginError] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
 
+  // Auto-login check (keeping for auth)
+  useEffect(() => {
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+      const user = JSON.parse(savedUser);
+      setCurrentUser(user);
+      setUserRole(user.role);
+      setIsLoggedIn(true);
+      setShowRoleSelector(false);
+    }
+  }, []);
 
-
-  // ✅ CLEAR PREP LOG
-const [prepLog, setPrepLog] = useState(() => loadFromStorage('prepLog', []));
-
-// ✅ CLEAR DISPATCH
-const [dispatch, setDispatch] = useState(() => loadFromStorage('dispatch', []));
-
-// ✅ CLEAR SALES
-const [sales, setSales] = useState(() => loadFromStorage('sales', []));
-
-
-
-// 4. AUTO-LOGIN CHECK (same as before)
-useEffect(() => {
-  const savedUser = localStorage.getItem('currentUser');
-  if (savedUser) {
-    const user = JSON.parse(savedUser);
-    setCurrentUser(user);
-    setUserRole(user.role);
-    setIsLoggedIn(true);
-    setShowRoleSelector(false);
-  }
-}, []);
-
-  // Auto-save to localStorage whenever state changes
-
-  // Around line 52-63 - KEEP THESE (DO NOT DELETE):
+  // Form states
   const [showAddInventoryItem, setShowAddInventoryItem] = useState(false);
   const [editingInventoryItem, setEditingInventoryItem] = useState(null);
 
@@ -180,10 +144,7 @@ useEffect(() => {
     category: 'Dry Items'
   });
 
-  const [inventory, setInventory] = useState([]);
-
-
-  // 2. ADD this useEffect to load inventory from database (add after your other useEffects):
+  // Load inventory from database
   useEffect(() => {
     const loadInventoryFromDatabase = async () => {
       try {
@@ -196,7 +157,6 @@ useEffect(() => {
         if (error) throw error;
 
         if (data && data.length > 0) {
-          // Convert snake_case from DB to camelCase for app
           const formattedInventory = data.map(item => ({
             id: item.id,
             name: item.name,
@@ -216,19 +176,13 @@ useEffect(() => {
         }
       } catch (error) {
         console.error('Error loading inventory:', error);
-        // Fall back to localStorage if database fails
-        const stored = localStorage.getItem('inventory');
-        if (stored) {
-          setInventory(JSON.parse(stored));
-          console.log('Loaded inventory from localStorage as fallback');
-        }
       }
     };
 
     loadInventoryFromDatabase();
-  }, []); // Empty array = runs once on mount
+  }, []);
 
-  // 3. Also load other data from database - ADD/UPDATE this existing useEffect:
+  // Load all data from database
   useEffect(() => {
     const loadAllDataFromDatabase = async () => {
       console.log('Loading all data from Supabase...');
@@ -342,60 +296,22 @@ useEffect(() => {
     };
 
     loadAllDataFromDatabase();
-  }, []); // Run once on mount
-
-  useEffect(() => {
-    localStorage.setItem('recipes', JSON.stringify(recipes));
-  }, [recipes]);
-
-  useEffect(() => {
-    localStorage.setItem('prepLog', JSON.stringify(prepLog));
-  }, [prepLog]);
-
-  useEffect(() => {
-    localStorage.setItem('dispatch', JSON.stringify(dispatch));
-  }, [dispatch]);
-
-  useEffect(() => {
-    localStorage.setItem('sales', JSON.stringify(sales));
-  }, [sales]);
+  }, []);
 
   // Load initial data from Supabase on app mount
-useEffect(() => {
-  const loadInitialData = async () => {
-    console.log('Loading menu data from Supabase...');
-    await loadMenuWithRecipes();
-    // We'll add more Supabase loads here as needed
+  useEffect(() => {
+    const loadInitialData = async () => {
+      console.log('Loading menu data from Supabase...');
+      await loadMenuWithRecipes();
+    };
+
+    loadInitialData();
+  }, []);
+
+  // Helper function to get all dish names
+  const getAllDishNames = () => {
+    return allDishNames || [];
   };
-
-  loadInitialData();
-}, []); // Empty array = runs once on mount
-
-
-
-// REPLACE the entire getAllDishNames function with:
-const getAllDishNames = () => {
-  if (allDishNames && allDishNames.length > 0) {
-    return allDishNames;
-  }
-
-  const stored = localStorage.getItem('allDishNames');
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored);
-      if (parsed && parsed.length > 0) {
-        return parsed;
-      }
-    } catch (e) {
-      console.error('Error parsing stored dish names:', e);
-    }
-  }
-
-  return [];
-};
-
-  // Add state for waste tracking
-  const [wasteLog, setWasteLog] = useState(() => loadFromStorage('wasteLog', []));
 
   const [newPrepEntry, setNewPrepEntry] = useState({
     dishName: '',
@@ -405,14 +321,13 @@ const getAllDishNames = () => {
     preparedBy: 'Vasanth'
   });
 
-  // Add after your other useState declarations
+  // User role state - keeping localStorage for auth
   const [userRole, setUserRole] = useState(() =>
     localStorage.getItem('userRole') || null
   );
   const [showRoleSelector, setShowRoleSelector] = useState(() =>
     !localStorage.getItem('userRole')
   );
-
 
   // Role-based permissions
   const rolePermissions = {
@@ -422,7 +337,6 @@ const getAllDishNames = () => {
       canManageInventory: true,
       canAddStaff: true,
       tabs: ['dashboard', 'smart-planning', 'prep', 'dispatch', 'sales','daily-checks', 'old-stock', 'waste', 'recipe-bank', 'inventory', 'procurement', 'reports', 'users']
-
     },
     manager: {
       canSeeCosts: true,
@@ -443,107 +357,69 @@ const getAllDishNames = () => {
       canSeeReports: false,
       canManageInventory: false,
       canAddStaff: false,
-      tabs: ['sales', 'old-stock', 'daily-checks']
+      tabs: ['old-stock', 'daily-checks','sales']
     }
   };
-
-
-
-  // Replace your hardcoded login system with this Supabase version:
-
-  // 1. LOGIN STATE (keep your existing state variables)
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
-  const [loginError, setLoginError] = useState('');
-  const [loginLoading, setLoginLoading] = useState(false);
-
-
-
-
 
   // Get current permissions
   const currentPermissions = rolePermissions[userRole] || rolePermissions.staff;
 
-  // Add after your role state variables
-  const [shopStatuses, setShopStatuses] = useState(() => {
-    const saved = localStorage.getItem('shopStatuses');
-    return saved ? JSON.parse(saved) : {"Eastham": "closed", "Bethnal Green": "closed"};
-  });
+  // Shop statuses - initialized with defaults
+  const [shopStatuses, setShopStatuses] = useState({"Eastham": "closed", "Bethnal Green": "closed"});
 
-  // Add these state variables
-const [showDispatchModal, setShowDispatchModal] = useState(false);
-const [quickDispatchItem, setQuickDispatchItem] = useState('');
-const [quickDispatchQty, setQuickDispatchQty] = useState('');
+  // State variables
+  const [showDispatchModal, setShowDispatchModal] = useState(false);
+  const [quickDispatchItem, setQuickDispatchItem] = useState('');
+  const [quickDispatchQty, setQuickDispatchQty] = useState('');
 
-  const [shopOpenTimes, setShopOpenTimes] = useState(() => {
-    const saved = localStorage.getItem('shopOpenTimes');
-    return saved ? JSON.parse(saved) : {};
-  });
+  const [shopOpenTimes, setShopOpenTimes] = useState({});
 
   const [selectedLocation, setSelectedLocation] = useState('all');
 
-
-  // Add these after your existing state variables
+  // Menu state
   const [menuItems, setMenuItems] = useState([]);
   const [recipeBank, setRecipeBank] = useState([]);
   const [menuLoading, setMenuLoading] = useState(true);
 
-
-  // Add these new state variables
+  // Sales state
   const [selectedSalesLocation, setSelectedSalesLocation] = useState('Eastham');
   const [salesViewMode, setSalesViewMode] = useState('stock-tracker');
   const [stockSearchTerm, setStockSearchTerm] = useState('');
   const [stockCategoryFilter, setStockCategoryFilter] = useState('all');
   const [stockStatusFilter, setStockStatusFilter] = useState('all');
 
-
-  // Add this to your KitchenERP.js file
-
-  // 1. PORTION CONFIGURATION TABLE - Add this after your state variables
+  // PORTION CONFIGURATION TABLE
   const portionConfig = {
-    // Biryani Dishes
     'Chicken Biryani': { portionsPerKg: 6, portionSize: 166, containerSize: '650ml' },
     'Lamb Biryani': { portionsPerKg: 6, portionSize: 166, containerSize: '650ml' },
     'Veg Biryani': { portionsPerKg: 6, portionSize: 166, containerSize: '650ml' },
     'Donne Biryani Chicken': { portionsPerKg: 6, portionSize: 166, containerSize: '650ml' },
     'Donne Biryani Lamb': { portionsPerKg: 6, portionSize: 166, containerSize: '650ml' },
     'Prawns Pulav': { portionsPerKg: 6, portionSize: 166, containerSize: '650ml' },
-
-    // Curry Dishes
     'Chicken Curry': { portionsPerKg: 10, portionSize: 100, containerSize: '500ml' },
     'Lamb Curry': { portionsPerKg: 10, portionSize: 100, containerSize: '500ml' },
     'Fish Curry': { portionsPerKg: 10, portionSize: 100, containerSize: '500ml' },
     'Paneer Butter Masala': { portionsPerKg: 10, portionSize: 100, containerSize: '500ml' },
     'Dal Tadka': { portionsPerKg: 10, portionSize: 100, containerSize: '500ml' },
-
-    // Starters
     'Chicken Pakora': { portionsPerKg: 12, portionSize: 83, containerSize: '12oz' },
     'Veg Samosa': { portionsPerKg: 15, portionSize: 66, containerSize: '8oz' },
     'Onion Bhaji': { portionsPerKg: 15, portionSize: 66, containerSize: '8oz' },
-
-    // Sides & Chutneys
     'Salan': { portionsPerKg: 12, portionSize: 83, containerSize: '12oz' },
     'Raitha': { portionsPerKg: 12, portionSize: 83, containerSize: '8oz' },
-
-    // Default
     'default': { portionsPerKg: 8, portionSize: 125, containerSize: '500ml' }
   };
 
-  // 2. PREP SUGGESTION CALCULATOR - Add this function
+  // PREP SUGGESTION CALCULATOR
   const calculatePrepSuggestion = (dishName) => {
-    // Get portion config
     const config = portionConfig[dishName] || portionConfig['default'];
 
-    // Get last 7 days sales for this dish
     const last7DaysSales = sales.filter(s => {
       const saleDate = new Date(s.date);
       const daysAgo = (new Date() - saleDate) / (1000 * 60 * 60 * 24);
       return daysAgo <= 7 && s.dishName === dishName;
     });
 
-    // Calculate average daily sales
-    let avgDailySales = 20; // Default
+    let avgDailySales = 20;
     if (last7DaysSales.length > 0) {
       const totalSold = last7DaysSales.reduce((sum, s) =>
         sum + (s.receivedPortions - s.remainingPortions), 0
@@ -551,21 +427,13 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
       avgDailySales = Math.round(totalSold / 7);
     }
 
-    // Day of week multiplier
     const dayMultiplier = {
-      0: 1.3,  // Sunday - Busy
-      1: 0.8,  // Monday - Quiet
-      2: 0.9,  // Tuesday
-      3: 0.9,  // Wednesday
-      4: 1.0,  // Thursday
-      5: 1.2,  // Friday - Busy
-      6: 1.3   // Saturday - Busy
+      0: 1.3, 1: 0.8, 2: 0.9, 3: 0.9, 4: 1.0, 5: 1.2, 6: 1.3
     };
 
     const today = new Date().getDay();
     const todayMultiplier = dayMultiplier[today] || 1;
 
-    // Calculate current stock (all locations)
     const currentStock = sales
       .filter(s => s.dishName === dishName && !s.endOfDay)
       .reduce((sum, s) => sum + s.remainingPortions, 0);
@@ -576,8 +444,7 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
 
     const totalStock = currentStock + oldStock;
 
-    // Calculate suggestion
-    const expectedDemand = Math.ceil(avgDailySales * todayMultiplier * 1.1); // 10% buffer
+    const expectedDemand = Math.ceil(avgDailySales * todayMultiplier * 1.1);
     const needToPrepare = Math.max(0, expectedDemand - totalStock);
     const kgToPrepare = Math.ceil((needToPrepare / config.portionsPerKg) * 10) / 10;
 
@@ -596,15 +463,6 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
                needToPrepare > 0 ? 'medium' : 'low'
     };
   };
-
-  useEffect(() => {
-    const loadInventoryFromDatabase = async () => {
-      // Load from Supabase
-    };
-    loadInventoryFromDatabase();
-  }, []);
-
-
 
   // Load menu items with recipes from Supabase
   const loadMenuWithRecipes = async () => {
@@ -638,7 +496,6 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
     return getAllDishNames();
   };
 
-  // Helper: Get menu by location
   const getMenuByLocation = (location) => {
     if (location === 'all') {
       return menuItems;
@@ -646,16 +503,12 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
     return menuItems.filter(item => item.location === location);
   };
 
-
-
   const [newSalesEntry, setNewSalesEntry] = useState({
     location: '',
     dishName: '',
     receivedPortions: '',
     remainingPortions: ''
   });
-
-
 
   const [newWasteEntry, setNewWasteEntry] = useState({
     dishName: '',
@@ -665,7 +518,6 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
     notes: ''
   });
 
-  // State for editing
   const [editingPrepItem, setEditingPrepItem] = useState(null);
   const [editingSalesItem, setEditingSalesItem] = useState(null);
 
@@ -679,21 +531,15 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
 
   const [activeTab, setActiveTab] = useState('dashboard');
 
-
-  // Helper function for location-based priorities using real menu data
   const getLocationBasedPriorities = (location) => {
-    // Get menu items for the selected location
     const locationMenu = getMenuByLocation(location);
-
     const priorities = [];
 
     locationMenu.forEach(menuItem => {
-      // Skip inventory-only items
       if (!menuItem.requires_recipe) return;
 
       const dish = menuItem.dish_name;
 
-      // Check prep log for this dish
       const stock = prepLog.filter(p =>
         p.dishName === dish &&
         p.status === 'prepared'
@@ -701,7 +547,6 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
 
       const totalStock = stock.reduce((sum, item) => sum + item.totalPortions, 0);
 
-      // Check sales data for demand
       const recentSales = sales.filter(s =>
         s.dishName === dish &&
         (location === 'all' || s.location === location)
@@ -709,9 +554,8 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
 
       const avgDailySales = recentSales.length > 0
         ? recentSales.reduce((sum, s) => sum + (s.receivedPortions - s.remainingPortions), 0) / Math.max(1, recentSales.length)
-        : 20; // Default estimate
+        : 20;
 
-      // Priority if stock is low
       if (totalStock < avgDailySales * 0.5) {
         priorities.push({
           dish,
@@ -727,7 +571,6 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
     return priorities.sort((a, b) => a.currentStock - b.currentStock);
   };
 
-  // Helper functions
   const getInventoryMetrics = () => {
     return inventory.map(item => {
       const usedThisWeek = calculateUsedFromPrep(item.name);
@@ -756,7 +599,6 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
     return totalUsed;
   };
 
-  // NEW CALLBACK HANDLERS FOR ENHANCED COMPONENTS
   const handleQuickPrep = (dishName, suggestedKg) => {
     setNewPrepEntry(prev => ({
       ...prev,
@@ -820,7 +662,6 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
         console.log('Unknown action:', action);
     }
   };
-
 
   const calculateDishCost = (dishName, quantity = 1) => {
     const dishRecipes = recipes.filter(r => r.dishName === dishName);
@@ -890,7 +731,6 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
     }
   };
 
-  // Check ingredient availability before allowing prep
   const checkIngredientAvailability = (dishName, quantity) => {
     const dishRecipes = recipes.filter(r => r.dishName === dishName);
     const insufficientIngredients = [];
@@ -915,7 +755,6 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
 
   const handlePrepSubmit = async () => {
     if (newPrepEntry.dishName && newPrepEntry.quantityCooked && newPrepEntry.portionSize && newPrepEntry.preparedBy) {
-      // Check ingredient availability (existing code)
       const shortages = checkIngredientAvailability(newPrepEntry.dishName, parseFloat(newPrepEntry.quantityCooked));
 
       if (shortages.length > 0) {
@@ -934,8 +773,8 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
       const newEntry = {
         id: prepLog.length > 0 ? Math.max(...prepLog.map(p => p.id)) + 1 : 1,
         date: now.toISOString().split('T')[0],
-        timestamp: now.toISOString(), // ADD THIS - Full timestamp for age tracking
-        prepTime: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }), // ADD THIS
+        timestamp: now.toISOString(),
+        prepTime: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
         dishName: newPrepEntry.dishName,
         quantityCooked: parseFloat(newPrepEntry.quantityCooked),
         preparedBy: newPrepEntry.preparedBy,
@@ -943,13 +782,10 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
         containerSize: newPrepEntry.containerSize,
         totalPortions,
         processed: false,
-        ageInHours: 0, // ADD THIS - Will be calculated dynamically
-        status: 'fresh' // ADD THIS - fresh/aging/old
+        ageInHours: 0,
+        status: 'fresh'
       };
 
-
-
-      // Success message with portion config info
       const config = portionConfig[newEntry.dishName] || portionConfig['default'];
       alert(`✅ Successfully added ${totalPortions} portions of ${newEntry.dishName}!\n\n📦 Using ${config.containerSize} containers\n⚖️ ${config.portionSize}g per portion\n👨‍🍳 Prepared by ${newEntry.preparedBy}`);
     } else {
@@ -957,104 +793,80 @@ const [quickDispatchQty, setQuickDispatchQty] = useState('');
     }
   };
 
+  // LOGIN HANDLER WITH SUPABASE - Keeping localStorage for auth
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoginLoading(true);
+    setLoginError('');
 
+    try {
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', loginForm.username)
+        .eq('password', loginForm.password)
+        .eq('is_active', true)
+        .single();
 
+      if (error || !user) {
+        setLoginError('Invalid username or password');
+        setLoginLoading(false);
+        return;
+      }
 
-
-
-// 2. UPDATED LOGIN HANDLER WITH SUPABASE
-const handleLogin = async (e) => {
-  e.preventDefault();
-  setLoginLoading(true);
-  setLoginError('');
-
-  try {
-    // Query Supabase for user
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('username', loginForm.username)
-      .eq('password', loginForm.password)
-      .eq('is_active', true)
-      .single();
-
-    if (error || !user) {
-      setLoginError('Invalid username or password');
+      setIsLoggedIn(true);
+      setCurrentUser(user);
+      setUserRole(user.role);
+      setShowRoleSelector(false);
+      localStorage.setItem('userRole', user.role);
+      localStorage.setItem('currentUser', JSON.stringify(user));
+      setLoginError('');
       setLoginLoading(false);
+
+    } catch (error) {
+      console.error('Login error:', error);
+      setLoginError('Login failed. Please try again.');
+      setLoginLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('isLoggedIn');
+
+    setIsLoggedIn(false);
+    setCurrentUser(null);
+    setUserRole(null);
+    setShowRoleSelector(false);
+    setActiveTab('dashboard');
+
+    setLoginForm({ username: '', password: '' });
+  };
+
+  const handleDeletePrepItem = async (prepId) => {
+    const prepItem = prepLog.find(p => p.id === prepId);
+
+    if (!prepItem) return;
+
+    if (prepItem.processed) {
+      alert('❌ Cannot delete dispatched items!');
       return;
     }
 
-    // Login successful
-    setIsLoggedIn(true);
-    setCurrentUser(user);
-    setUserRole(user.role);
-    setShowRoleSelector(false);
-    localStorage.setItem('userRole', user.role);
-    localStorage.setItem('currentUser', JSON.stringify(user));
-    setLoginError('');
-    setLoginLoading(false);
+    if (!window.confirm(`Delete ${prepItem.dishName} (${prepItem.totalPortions} portions)?`)) {
+      return;
+    }
 
-  } catch (error) {
-    console.error('Login error:', error);
-    setLoginError('Login failed. Please try again.');
-    setLoginLoading(false);
-  }
-};
+    try {
+      setPrepLog(prev => prev.filter(p => p.id !== prepId));
+      alert('✅ Prep entry deleted successfully');
+    } catch (error) {
+      console.error('Error deleting prep item:', error);
+      alert('❌ Error deleting item');
+    }
+  };
 
-const handleLogout = () => {
-  // Clear everything
-  localStorage.removeItem('userRole');
-  localStorage.removeItem('currentUser');
-  localStorage.removeItem('isLoggedIn');
-
-  // Set states to show login screen
-  setIsLoggedIn(false);  // THIS IS THE KEY!
-  setCurrentUser(null);
-  setUserRole(null);
-  setShowRoleSelector(false);
-  setActiveTab('dashboard');
-
-  // Optional: Clear form data
-  setLoginForm({ username: '', password: '' });
-};
-
-
-
-
-
-// ADD THE DELETE FUNCTION RIGHT AFTER IT:
-const handleDeletePrepItem = async (prepId) => {
-  const prepItem = prepLog.find(p => p.id === prepId);
-
-  if (!prepItem) return;
-
-  // Check if item is already dispatched
-  if (prepItem.processed) {
-    alert('❌ Cannot delete dispatched items!');
-    return;
-  }
-
-  // Confirm deletion
-  if (!window.confirm(`Delete ${prepItem.dishName} (${prepItem.totalPortions} portions)?`)) {
-    return;
-  }
-
-  try {
-    // Remove from local state
-    setPrepLog(prev => prev.filter(p => p.id !== prepId));
-
-    // If using database, also delete from there
-    // await supabase.from('prep_log').delete().eq('id', prepId);
-
-    alert('✅ Prep entry deleted successfully');
-  } catch (error) {
-    console.error('Error deleting prep item:', error);
-    alert('❌ Error deleting item');
-  }
-};
-
-
-  // Edit sales item function
   const handleEditSalesItem = (sale) => {
     setEditingSalesItem(sale.id);
     setNewSalesEntry({
@@ -1065,51 +877,48 @@ const handleDeletePrepItem = async (prepId) => {
     });
   };
 
-  const handleUpdateSalesItem = async () => {  // ← Add async
-  if (newSalesEntry.location && newSalesEntry.dishName && newSalesEntry.receivedPortions !== '' && newSalesEntry.remainingPortions !== '') {
+  const handleUpdateSalesItem = async () => {
+    if (newSalesEntry.location && newSalesEntry.dishName && newSalesEntry.receivedPortions !== '' && newSalesEntry.remainingPortions !== '') {
 
-    // ⭐ UPDATE IN DATABASE
-    const updatedSale = sales.find(s => s.id === editingSalesItem);
-    if (updatedSale) {
-      await saveToDatabase('sales', {
-        id: updatedSale.id,  // Include ID for update
-        dish_name: newSalesEntry.dishName,
-        location: newSalesEntry.location,
-        received_portions: parseInt(newSalesEntry.receivedPortions),
-        remaining_portions: parseInt(newSalesEntry.remainingPortions),
-        updated_by: `${newSalesEntry.location} Team`
+      const updatedSale = sales.find(s => s.id === editingSalesItem);
+      if (updatedSale) {
+        await saveToDatabase('sales', {
+          id: updatedSale.id,
+          dish_name: newSalesEntry.dishName,
+          location: newSalesEntry.location,
+          received_portions: parseInt(newSalesEntry.receivedPortions),
+          remaining_portions: parseInt(newSalesEntry.remainingPortions),
+          updated_by: `${newSalesEntry.location} Team`
+        });
+      }
+
+      setSales(prev => prev.map(sale =>
+        sale.id === editingSalesItem
+          ? {
+              ...sale,
+              location: newSalesEntry.location,
+              dishName: newSalesEntry.dishName,
+              receivedPortions: parseInt(newSalesEntry.receivedPortions),
+              remainingPortions: parseInt(newSalesEntry.remainingPortions),
+              time: new Date().toLocaleTimeString(),
+              updatedBy: `${newSalesEntry.location} Team`
+            }
+          : sale
+      ));
+
+      setEditingSalesItem(null);
+      setNewSalesEntry({
+        location: '',
+        dishName: '',
+        receivedPortions: '',
+        remainingPortions: ''
       });
+      alert('Sales item updated successfully');
+    } else {
+      alert('Please fill in all fields');
     }
-    // ⭐ END DATABASE UPDATE
+  };
 
-    setSales(prev => prev.map(sale =>
-      sale.id === editingSalesItem
-        ? {
-            ...sale,
-            location: newSalesEntry.location,
-            dishName: newSalesEntry.dishName,
-            receivedPortions: parseInt(newSalesEntry.receivedPortions),
-            remainingPortions: parseInt(newSalesEntry.remainingPortions),
-            time: new Date().toLocaleTimeString(),
-            updatedBy: `${newSalesEntry.location} Team`
-          }
-        : sale
-    ));
-
-    setEditingSalesItem(null);
-    setNewSalesEntry({
-      location: '',
-      dishName: '',
-      receivedPortions: '',
-      remainingPortions: ''
-    });
-    alert('Sales item updated successfully');
-  } else {
-    alert('Please fill in all fields');
-  }
-};
-
-  // End of day closing function - FIXED
   const handleEndOfDay = (location) => {
     const locationSales = sales.filter(s => s.location === location && !s.endOfDay);
 
@@ -1121,7 +930,6 @@ const handleDeletePrepItem = async (prepId) => {
     const finalStock = locationSales.reduce((total, sale) => total + sale.remainingPortions, 0);
 
     if (window.confirm(`🏪 CLOSE ${location.toUpperCase()} FOR THE DAY?\n\n📊 Final Summary:\n• Total remaining stock: ${finalStock} portions\n• These will become OLD STOCK tomorrow\n• Location will be marked as CLOSED\n\n⚠️ This action cannot be undone!\n\nContinue?`)) {
-      // Mark all sales items for this location as end-of-day
       setSales(prev => prev.map(sale =>
         sale.location === location && !sale.endOfDay
           ? {
@@ -1139,396 +947,367 @@ const handleDeletePrepItem = async (prepId) => {
     }
   };
 
+  const handleWasteSubmit = async () => {
+    if (newWasteEntry.dishName && newWasteEntry.location && newWasteEntry.portions && newWasteEntry.reason) {
+      const newEntry = {
+        id: wasteLog.length > 0 ? Math.max(...wasteLog.map(w => w.id)) + 1 : 1,
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toLocaleTimeString(),
+        ...newWasteEntry,
+        portions: parseInt(newWasteEntry.portions),
+        value: calculateDishCost(newWasteEntry.dishName) * 0.16 * parseInt(newWasteEntry.portions)
+      };
 
-  // Add waste tracking function
-  const handleWasteSubmit = async () => {  // ← Add async
-  if (newWasteEntry.dishName && newWasteEntry.location && newWasteEntry.portions && newWasteEntry.reason) {
-    const newEntry = {
-      id: wasteLog.length > 0 ? Math.max(...wasteLog.map(w => w.id)) + 1 : 1,
-      date: new Date().toISOString().split('T')[0],
-      time: new Date().toLocaleTimeString(),
-      ...newWasteEntry,
-      portions: parseInt(newWasteEntry.portions),
-      value: calculateDishCost(newWasteEntry.dishName) * 0.16 * parseInt(newWasteEntry.portions)
-    };
+      const dbEntry = {
+        dish_name: newEntry.dishName,
+        location: newEntry.location,
+        portions: newEntry.portions,
+        reason: newEntry.reason,
+        notes: newEntry.notes || null,
+        value: newEntry.value
+      };
 
-    // ⭐ ADD DATABASE SAVE
-    const dbEntry = {
-      dish_name: newEntry.dishName,
-      location: newEntry.location,
-      portions: newEntry.portions,
-      reason: newEntry.reason,
-      notes: newEntry.notes || null,
-      value: newEntry.value
-    };
+      await saveToDatabase('waste_log', dbEntry);
 
-    await saveToDatabase('waste_log', dbEntry);
-    // ⭐ END DATABASE SAVE
+      setWasteLog(prev => [...prev, newEntry]);
 
-    setWasteLog(prev => [...prev, newEntry]);
-    localStorage.setItem('wasteLog', JSON.stringify([...wasteLog, newEntry]));
+      setNewWasteEntry({
+        dishName: '',
+        location: '',
+        portions: '',
+        reason: '',
+        notes: ''
+      });
 
-    setNewWasteEntry({
-      dishName: '',
-      location: '',
-      portions: '',
-      reason: '',
-      notes: ''
+      alert(`Waste recorded: ${newEntry.portions} portions of ${newEntry.dishName}`);
+    } else {
+      alert('Please fill in all required fields');
+    }
+  };
+
+  // USER MANAGEMENT COMPONENT
+  const UserManagement = () => {
+    const [users, setUsers] = useState([]);
+    const [showAddUser, setShowAddUser] = useState(false);
+    const [newUser, setNewUser] = useState({
+      username: '',
+      password: '',
+      name: '',
+      role: 'staff',
+      location: 'Eastham'
     });
 
-    alert(`Waste recorded: ${newEntry.portions} portions of ${newEntry.dishName}`);
-  } else {
-    alert('Please fill in all required fields');
-  }
-};
-
-
-// 6. QUICK USER MANAGEMENT COMPONENT (Add to owner's view)
-const UserManagement = () => {
-  const [users, setUsers] = useState([]);
-  const [showAddUser, setShowAddUser] = useState(false);
-  const [newUser, setNewUser] = useState({
-    username: '',
-    password: '',
-    name: '',
-    role: 'staff',
-    location: 'Eastham'
-  });
-
-  // Load users
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
-  const loadUsers = async () => {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (!error) setUsers(data || []);
-  };
-
-  const handleAddUser = async () => {
-    const { error } = await supabase
-      .from('users')
-      .insert([newUser]);
-
-    if (!error) {
-      alert('User added successfully!');
-      setShowAddUser(false);
-      setNewUser({ username: '', password: '', name: '', role: 'staff', location: 'Eastham' });
+    useEffect(() => {
       loadUsers();
-    } else {
-      alert('Error adding user: ' + error.message);
-    }
-  };
+    }, []);
 
-  const toggleUserStatus = async (userId, currentStatus) => {
-    const { error } = await supabase
-      .from('users')
-      .update({ is_active: !currentStatus })
-      .eq('id', userId);
-
-    if (!error) {
-      loadUsers();
-    }
-  };
-
-  return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-6 flex items-center">
-        <Users className="mr-2" /> User Management
-      </h2>
-
-      <button
-        onClick={() => setShowAddUser(!showAddUser)}
-        className="mb-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-      >
-        <Plus className="inline mr-1" size={16} />
-        Add New User
-      </button>
-
-      {showAddUser && (
-        <div className="bg-white border rounded-lg p-4 mb-6">
-          <h3 className="font-semibold mb-3">Add New User</h3>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-            <input
-              placeholder="Username"
-              value={newUser.username}
-              onChange={(e) => setNewUser({...newUser, username: e.target.value})}
-              className="px-3 py-2 border rounded"
-            />
-            <input
-              placeholder="Password"
-              value={newUser.password}
-              onChange={(e) => setNewUser({...newUser, password: e.target.value})}
-              className="px-3 py-2 border rounded"
-            />
-            <input
-              placeholder="Full Name"
-              value={newUser.name}
-              onChange={(e) => setNewUser({...newUser, name: e.target.value})}
-              className="px-3 py-2 border rounded"
-            />
-            <select
-              value={newUser.role}
-              onChange={(e) => setNewUser({...newUser, role: e.target.value})}
-              className="px-3 py-2 border rounded"
-            >
-              <option value="staff">Staff</option>
-              <option value="chef">Chef</option>
-              <option value="manager">Manager</option>
-              <option value="owner">Owner</option>
-            </select>
-            <button
-              onClick={handleAddUser}
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-            >
-              Add User
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="bg-white border rounded-lg">
-        <table className="min-w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-2 text-left">Username</th>
-              <th className="px-4 py-2 text-left">Name</th>
-              <th className="px-4 py-2 text-left">Role</th>
-              <th className="px-4 py-2 text-left">Location</th>
-              <th className="px-4 py-2 text-left">Status</th>
-              <th className="px-4 py-2 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {users.map(user => (
-              <tr key={user.id}>
-                <td className="px-4 py-2">{user.username}</td>
-                <td className="px-4 py-2">{user.name}</td>
-                <td className="px-4 py-2">
-                  <span className={`px-2 py-1 rounded text-xs ${
-                    user.role === 'owner' ? 'bg-purple-100 text-purple-800' :
-                    user.role === 'manager' ? 'bg-blue-100 text-blue-800' :
-                    user.role === 'chef' ? 'bg-green-100 text-green-800' :
-                    'bg-orange-100 text-orange-800'
-                  }`}>
-                    {user.role}
-                  </span>
-                </td>
-                <td className="px-4 py-2">{user.location || '-'}</td>
-                <td className="px-4 py-2">
-                  <span className={`px-2 py-1 rounded text-xs ${
-                    user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {user.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td className="px-4 py-2">
-                  <button
-                    onClick={() => toggleUserStatus(user.id, user.is_active)}
-                    className={`px-3 py-1 rounded text-xs ${
-                      user.is_active
-                        ? 'bg-red-600 text-white hover:bg-red-700'
-                        : 'bg-green-600 text-white hover:bg-green-700'
-                    }`}
-                  >
-                    {user.is_active ? 'Deactivate' : 'Activate'}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-};
-
-
-
-  // ============================================
-// ADD ALL THESE HANDLER FUNCTIONS (around line 1500)
-// ============================================
-
-// Handler to add new inventory item
-const handleAddInventoryItem = async () => {
-  if (newInventoryItem.name && newInventoryItem.openingStock && newInventoryItem.unitCost) {
-    try {
-      // Prepare data for database (snake_case)
-      const dbItem = {
-        name: newInventoryItem.name,
-        unit: newInventoryItem.unit,
-        opening_stock: parseFloat(newInventoryItem.openingStock),
-        received_this_week: parseFloat(newInventoryItem.receivedThisWeek) || 0,
-        reorder_level: parseFloat(newInventoryItem.reorderLevel) || 1,
-        unit_cost: parseFloat(newInventoryItem.unitCost),
-        supplier: newInventoryItem.supplier,
-        category: newInventoryItem.category
-      };
-
-      // Insert into database and get the new record back
+    const loadUsers = async () => {
       const { data, error } = await supabase
-        .from('inventory')
-        .insert([dbItem])
-        .select()
-        .single();
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (!error) setUsers(data || []);
+    };
 
-      // Add to local state (convert to camelCase)
-      const newItem = {
-        id: data.id,
-        name: data.name,
-        unit: data.unit,
-        openingStock: parseFloat(data.opening_stock),
-        receivedThisWeek: parseFloat(data.received_this_week),
-        reorderLevel: parseFloat(data.reorder_level),
-        unitCost: parseFloat(data.unit_cost),
-        supplier: data.supplier,
-        category: data.category
-      };
-
-      setInventory(prev => [...prev, newItem]);
-
-      // Reset form
-      setNewInventoryItem({
-        name: '',
-        unit: 'kg',
-        openingStock: '',
-        receivedThisWeek: '',
-        reorderLevel: '',
-        unitCost: '',
-        supplier: 'Local Supplier',
-        category: 'Dry Items'
-      });
-      setShowAddInventoryItem(false);
-
-      alert(`✅ Successfully added ${newItem.name} to inventory!`);
-    } catch (error) {
-      console.error('Error adding inventory item:', error);
-      alert('❌ Error adding item to database');
-    }
-  } else {
-    alert('❌ Please fill in all required fields');
-  }
-};
-
-// Handler to start editing an inventory item
-const handleEditInventoryItem = (item) => {
-  setEditingInventoryItem(item.id);
-  setNewInventoryItem({
-    name: item.name,
-    unit: item.unit,
-    openingStock: item.openingStock.toString(),
-    receivedThisWeek: item.receivedThisWeek.toString(),
-    reorderLevel: item.reorderLevel.toString(),
-    unitCost: item.unitCost.toString(),
-    supplier: item.supplier,
-    category: item.category
-  });
-};
-
-// Handler to update an existing inventory item
-const handleUpdateInventoryItem = async () => {
-  if (newInventoryItem.name && newInventoryItem.openingStock && newInventoryItem.unitCost) {
-    try {
-      // Prepare data for database (snake_case)
-      const dbItem = {
-        name: newInventoryItem.name,
-        unit: newInventoryItem.unit,
-        opening_stock: parseFloat(newInventoryItem.openingStock),
-        received_this_week: parseFloat(newInventoryItem.receivedThisWeek) || 0,
-        reorder_level: parseFloat(newInventoryItem.reorderLevel) || 1,
-        unit_cost: parseFloat(newInventoryItem.unitCost),
-        supplier: newInventoryItem.supplier,
-        category: newInventoryItem.category,
-        updated_at: new Date().toISOString()
-      };
-
-      // Update in database
+    const handleAddUser = async () => {
       const { error } = await supabase
-        .from('inventory')
-        .update(dbItem)
-        .eq('id', editingInventoryItem);
+        .from('users')
+        .insert([newUser]);
 
-      if (error) throw error;
+      if (!error) {
+        alert('User added successfully!');
+        setShowAddUser(false);
+        setNewUser({ username: '', password: '', name: '', role: 'staff', location: 'Eastham' });
+        loadUsers();
+      } else {
+        alert('Error adding user: ' + error.message);
+      }
+    };
 
-      // Update local state (camelCase)
-      setInventory(prev => prev.map(item =>
-        item.id === editingInventoryItem
-          ? {
-              ...item,
-              name: newInventoryItem.name,
-              unit: newInventoryItem.unit,
-              openingStock: parseFloat(newInventoryItem.openingStock),
-              receivedThisWeek: parseFloat(newInventoryItem.receivedThisWeek) || 0,
-              reorderLevel: parseFloat(newInventoryItem.reorderLevel) || 1,
-              unitCost: parseFloat(newInventoryItem.unitCost),
-              supplier: newInventoryItem.supplier,
-              category: newInventoryItem.category
-            }
-          : item
-      ));
-
-      // Reset form
-      setEditingInventoryItem(null);
-      setNewInventoryItem({
-        name: '',
-        unit: 'kg',
-        openingStock: '',
-        receivedThisWeek: '',
-        reorderLevel: '',
-        unitCost: '',
-        supplier: 'Local Supplier',
-        category: 'Dry Items'
-      });
-
-      alert('✅ Inventory item updated successfully!');
-    } catch (error) {
-      console.error('Error updating inventory item:', error);
-      alert('❌ Error updating item in database');
-    }
-  } else {
-    alert('❌ Please fill in all required fields');
-  }
-};
-
-// Handler to delete an inventory item
-const handleDeleteInventoryItem = async (itemId, itemName) => {
-  // Check if item is used in any recipes
-  const isUsedInRecipes = recipes.some(r => r.ingredient === itemName);
-
-  if (isUsedInRecipes) {
-    alert(`❌ Cannot delete "${itemName}" - it's used in recipes!`);
-    return;
-  }
-
-  if (window.confirm(`Are you sure you want to delete "${itemName}" from inventory?`)) {
-    try {
-      // Delete from database
+    const toggleUserStatus = async (userId, currentStatus) => {
       const { error } = await supabase
-        .from('inventory')
-        .delete()
-        .eq('id', itemId);
+        .from('users')
+        .update({ is_active: !currentStatus })
+        .eq('id', userId);
 
-      if (error) throw error;
+      if (!error) {
+        loadUsers();
+      }
+    };
 
-      // Delete from local state
-      setInventory(prev => prev.filter(item => item.id !== itemId));
-      alert(`✅ "${itemName}" deleted from inventory`);
-    } catch (error) {
-      console.error('Error deleting inventory item:', error);
-      alert('❌ Error deleting item from database');
+    return (
+      <div className="p-6">
+        <h2 className="text-2xl font-bold mb-6 flex items-center">
+          <Users className="mr-2" /> User Management
+        </h2>
+
+        <button
+          onClick={() => setShowAddUser(!showAddUser)}
+          className="mb-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          <Plus className="inline mr-1" size={16} />
+          Add New User
+        </button>
+
+        {showAddUser && (
+          <div className="bg-white border rounded-lg p-4 mb-6">
+            <h3 className="font-semibold mb-3">Add New User</h3>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+              <input
+                placeholder="Username"
+                value={newUser.username}
+                onChange={(e) => setNewUser({...newUser, username: e.target.value})}
+                className="px-3 py-2 border rounded"
+              />
+              <input
+                placeholder="Password"
+                value={newUser.password}
+                onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                className="px-3 py-2 border rounded"
+              />
+              <input
+                placeholder="Full Name"
+                value={newUser.name}
+                onChange={(e) => setNewUser({...newUser, name: e.target.value})}
+                className="px-3 py-2 border rounded"
+              />
+              <select
+                value={newUser.role}
+                onChange={(e) => setNewUser({...newUser, role: e.target.value})}
+                className="px-3 py-2 border rounded"
+              >
+                <option value="staff">Staff</option>
+                <option value="chef">Chef</option>
+                <option value="manager">Manager</option>
+                <option value="owner">Owner</option>
+              </select>
+              <button
+                onClick={handleAddUser}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                Add User
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="bg-white border rounded-lg">
+          <table className="min-w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left">Username</th>
+                <th className="px-4 py-2 text-left">Name</th>
+                <th className="px-4 py-2 text-left">Role</th>
+                <th className="px-4 py-2 text-left">Location</th>
+                <th className="px-4 py-2 text-left">Status</th>
+                <th className="px-4 py-2 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {users.map(user => (
+                <tr key={user.id}>
+                  <td className="px-4 py-2">{user.username}</td>
+                  <td className="px-4 py-2">{user.name}</td>
+                  <td className="px-4 py-2">
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      user.role === 'owner' ? 'bg-purple-100 text-purple-800' :
+                      user.role === 'manager' ? 'bg-blue-100 text-blue-800' :
+                      user.role === 'chef' ? 'bg-green-100 text-green-800' :
+                      'bg-orange-100 text-orange-800'
+                    }`}>
+                      {user.role}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2">{user.location || '-'}</td>
+                  <td className="px-4 py-2">
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {user.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2">
+                    <button
+                      onClick={() => toggleUserStatus(user.id, user.is_active)}
+                      className={`px-3 py-1 rounded text-xs ${
+                        user.is_active
+                          ? 'bg-red-600 text-white hover:bg-red-700'
+                          : 'bg-green-600 text-white hover:bg-green-700'
+                      }`}
+                    >
+                      {user.is_active ? 'Deactivate' : 'Activate'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  // INVENTORY HANDLERS
+  const handleAddInventoryItem = async () => {
+    if (newInventoryItem.name && newInventoryItem.openingStock && newInventoryItem.unitCost) {
+      try {
+        const dbItem = {
+          name: newInventoryItem.name,
+          unit: newInventoryItem.unit,
+          opening_stock: parseFloat(newInventoryItem.openingStock),
+          received_this_week: parseFloat(newInventoryItem.receivedThisWeek) || 0,
+          reorder_level: parseFloat(newInventoryItem.reorderLevel) || 1,
+          unit_cost: parseFloat(newInventoryItem.unitCost),
+          supplier: newInventoryItem.supplier,
+          category: newInventoryItem.category
+        };
+
+        const { data, error } = await supabase
+          .from('inventory')
+          .insert([dbItem])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const newItem = {
+          id: data.id,
+          name: data.name,
+          unit: data.unit,
+          openingStock: parseFloat(data.opening_stock),
+          receivedThisWeek: parseFloat(data.received_this_week),
+          reorderLevel: parseFloat(data.reorder_level),
+          unitCost: parseFloat(data.unit_cost),
+          supplier: data.supplier,
+          category: data.category
+        };
+
+        setInventory(prev => [...prev, newItem]);
+
+        setNewInventoryItem({
+          name: '',
+          unit: 'kg',
+          openingStock: '',
+          receivedThisWeek: '',
+          reorderLevel: '',
+          unitCost: '',
+          supplier: 'Local Supplier',
+          category: 'Dry Items'
+        });
+        setShowAddInventoryItem(false);
+
+        alert(`✅ Successfully added ${newItem.name} to inventory!`);
+      } catch (error) {
+        console.error('Error adding inventory item:', error);
+        alert('❌ Error adding item to database');
+      }
+    } else {
+      alert('❌ Please fill in all required fields');
     }
-  }
-};
+  };
 
+  const handleEditInventoryItem = (item) => {
+    setEditingInventoryItem(item.id);
+    setNewInventoryItem({
+      name: item.name,
+      unit: item.unit,
+      openingStock: item.openingStock.toString(),
+      receivedThisWeek: item.receivedThisWeek.toString(),
+      reorderLevel: item.reorderLevel.toString(),
+      unitCost: item.unitCost.toString(),
+      supplier: item.supplier,
+      category: item.category
+    });
+  };
 
+  const handleUpdateInventoryItem = async () => {
+    if (newInventoryItem.name && newInventoryItem.openingStock && newInventoryItem.unitCost) {
+      try {
+        const dbItem = {
+          name: newInventoryItem.name,
+          unit: newInventoryItem.unit,
+          opening_stock: parseFloat(newInventoryItem.openingStock),
+          received_this_week: parseFloat(newInventoryItem.receivedThisWeek) || 0,
+          reorder_level: parseFloat(newInventoryItem.reorderLevel) || 1,
+          unit_cost: parseFloat(newInventoryItem.unitCost),
+          supplier: newInventoryItem.supplier,
+          category: newInventoryItem.category,
+          updated_at: new Date().toISOString()
+        };
 
-  // Add Waste Tracking Component
+        const { error } = await supabase
+          .from('inventory')
+          .update(dbItem)
+          .eq('id', editingInventoryItem);
+
+        if (error) throw error;
+
+        setInventory(prev => prev.map(item =>
+          item.id === editingInventoryItem
+            ? {
+                ...item,
+                name: newInventoryItem.name,
+                unit: newInventoryItem.unit,
+                openingStock: parseFloat(newInventoryItem.openingStock),
+                receivedThisWeek: parseFloat(newInventoryItem.receivedThisWeek) || 0,
+                reorderLevel: parseFloat(newInventoryItem.reorderLevel) || 1,
+                unitCost: parseFloat(newInventoryItem.unitCost),
+                supplier: newInventoryItem.supplier,
+                category: newInventoryItem.category
+              }
+            : item
+        ));
+
+        setEditingInventoryItem(null);
+        setNewInventoryItem({
+          name: '',
+          unit: 'kg',
+          openingStock: '',
+          receivedThisWeek: '',
+          reorderLevel: '',
+          unitCost: '',
+          supplier: 'Local Supplier',
+          category: 'Dry Items'
+        });
+
+        alert('✅ Inventory item updated successfully!');
+      } catch (error) {
+        console.error('Error updating inventory item:', error);
+        alert('❌ Error updating item in database');
+      }
+    } else {
+      alert('❌ Please fill in all required fields');
+    }
+  };
+
+  const handleDeleteInventoryItem = async (itemId, itemName) => {
+    const isUsedInRecipes = recipes.some(r => r.ingredient === itemName);
+
+    if (isUsedInRecipes) {
+      alert(`❌ Cannot delete "${itemName}" - it's used in recipes!`);
+      return;
+    }
+
+    if (window.confirm(`Are you sure you want to delete "${itemName}" from inventory?`)) {
+      try {
+        const { error } = await supabase
+          .from('inventory')
+          .delete()
+          .eq('id', itemId);
+
+        if (error) throw error;
+
+        setInventory(prev => prev.filter(item => item.id !== itemId));
+        alert(`✅ "${itemName}" deleted from inventory`);
+      } catch (error) {
+        console.error('Error deleting inventory item:', error);
+        alert('❌ Error deleting item from database');
+      }
+    }
+  };
+
+  // WASTE TRACKING COMPONENT
   const WasteTracking = () => {
     const totalWaste = wasteLog.reduce((sum, w) => sum + w.portions, 0);
     const totalWasteValue = wasteLog.reduce((sum, w) => sum + (w.value || 0), 0);
@@ -1540,7 +1319,6 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
           <Trash2 className="mr-2" /> Waste Tracking
         </h2>
 
-        {/* Summary */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-red-50 p-4 rounded-lg">
             <p className="text-sm text-gray-600">Total Waste This Week</p>
@@ -1571,22 +1349,21 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
           </div>
         </div>
 
-        {/* Add Waste Entry */}
         <div className="bg-white border rounded-lg p-6 mb-6">
           <h3 className="text-lg font-semibold mb-4">Record Waste</h3>
           <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Dish Name *</label>
               <select
-    value={newWasteEntry.dishName}
-    onChange={(e) => setNewWasteEntry(prev => ({ ...prev, dishName: e.target.value }))}
-    className="w-full p-2 border rounded"
-  >
-    <option value="">Select Dish</option>
-    {getAllDishNames().map(dish => (
-      <option key={dish} value={dish}>{dish}</option>
-    ))}
-  </select>
+                value={newWasteEntry.dishName}
+                onChange={(e) => setNewWasteEntry(prev => ({ ...prev, dishName: e.target.value }))}
+                className="w-full p-2 border rounded"
+              >
+                <option value="">Select Dish</option>
+                {getAllDishNames().map(dish => (
+                  <option key={dish} value={dish}>{dish}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Location *</label>
@@ -1649,7 +1426,6 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
           </div>
         </div>
 
-        {/* Waste Log */}
         <div className="bg-white border rounded-lg">
           <div className="p-4 border-b">
             <h3 className="text-lg font-semibold">Waste Log</h3>
@@ -1701,11 +1477,10 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
     );
   };
 
-  // Navigation tabs
-  // Update tab order - Smart Planning as #2
+  // NAVIGATION TABS
   const allTabs = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    { id: 'smart-planning', label: 'Smart Planning', icon: Calendar }, // Moved to #2
+    { id: 'smart-planning', label: 'Smart Planning', icon: Calendar },
     { id: 'prep', label: 'Prep Log', icon: ChefHat },
     { id: 'dispatch', label: 'Dispatch', icon: Truck },
     { id: 'sales', label: 'Sales Tracker', icon: DollarSign },
@@ -1719,10 +1494,9 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
     { id: 'users', label: 'Users', icon: Users }
   ];
 
-  // Filter tabs based on current role
   const tabs = allTabs.filter(tab => currentPermissions.tabs.includes(tab.id));
 
-  // Add Reports Component
+  // REPORTS COMPONENT
   const Reports = () => {
     const [reportType, setReportType] = useState('daily');
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -1762,7 +1536,6 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
           <FileText className="mr-2" /> Reports & Analytics
         </h2>
 
-        {/* Report Controls */}
         <div className="bg-white border rounded-lg p-4 mb-6">
           <div className="flex items-center space-x-4">
             <div>
@@ -1795,11 +1568,9 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
           </div>
         </div>
 
-        {/* Report Content */}
         <div className="bg-white border rounded-lg p-6">
           <h3 className="text-xl font-bold mb-6 text-center">Daily Report - {selectedDate}</h3>
 
-          {/* Financial Summary */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="text-center p-4 bg-green-50 rounded">
               <p className="text-sm text-gray-600">Revenue</p>
@@ -1819,7 +1590,6 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
             </div>
           </div>
 
-          {/* Operations Summary */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div>
               <h4 className="font-semibold mb-3">Sales Performance</h4>
@@ -1870,7 +1640,6 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
             </div>
           </div>
 
-          {/* Action Items */}
           <div className="border-t pt-4">
             <h4 className="font-semibold mb-3">Key Insights & Actions</h4>
             <ul className="space-y-2 text-sm">
@@ -1890,7 +1659,7 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
     );
   };
 
-  // 5. ENHANCED LOGIN SCREEN
+  // LOGIN SCREEN
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -1950,11 +1719,8 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
           <div className="mt-6 p-4 bg-gray-50 rounded-lg">
             <p className="text-sm font-medium text-gray-700 mb-2">Login Credentials:</p>
             <div className="text-xs text-gray-600 space-y-1">
-
-
               <div>👨‍🍳 Bethnal Staff: bethnal / staff123</div>
               <div>👥 Eastham Staff: eastham / staff123</div>
-
             </div>
           </div>
         </div>
@@ -1962,133 +1728,126 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
     );
   }
 
-
-
+  // MAIN APP RENDER
   return (
     <div className="min-h-screen bg-gray-100">
-    <nav className="bg-white shadow-sm border-b">
-  <div className="px-6 py-4">
-    <div className="flex items-center justify-between">
-      <div className="flex items-center space-x-4">
-        <ChefHat className="text-blue-600" size={32} />
-        <h1 className="text-xl font-bold text-gray-900">RICE AFFAIR & DOZT KITCHEN MANAGEMENT</h1>
-        <div className="flex space-x-2">
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-            shopStatuses['Eastham'] === 'open' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-          }`}>
-            Eastham: {shopStatuses['Eastham'] === 'open' ? '🟢' : '🔴'}
-          </span>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-            shopStatuses['Bethnal Green'] === 'open' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-          }`}>
-            BG: {shopStatuses['Bethnal Green'] === 'open' ? '🟢' : '🔴'}
-          </span>
+      <nav className="bg-white shadow-sm border-b">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <ChefHat className="text-blue-600" size={32} />
+              <h1 className="text-xl font-bold text-gray-900">RICE AFFAIR & DOZT KITCHEN MANAGEMENT</h1>
+              <div className="flex space-x-2">
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  shopStatuses['Eastham'] === 'open' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`}>
+                  Eastham: {shopStatuses['Eastham'] === 'open' ? '🟢' : '🔴'}
+                </span>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  shopStatuses['Bethnal Green'] === 'open' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`}>
+                  BG: {shopStatuses['Bethnal Green'] === 'open' ? '🟢' : '🔴'}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="text-sm text-gray-600">
+                Central Prep Kitchen | Eastham & Bethnal Green Locations
+              </div>
+              {userRole && (
+                <div className="flex items-center space-x-2">
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    userRole === 'owner' ? 'bg-purple-100 text-purple-800' :
+                    userRole === 'manager' ? 'bg-blue-100 text-blue-800' :
+                    userRole === 'chef' ? 'bg-green-100 text-green-800' :
+                    'bg-orange-100 text-orange-800'
+                  }`}>
+                    {userRole === 'owner' ? '👑 Owner' :
+                     userRole === 'manager' ? '💼 Manager' :
+                     userRole === 'chef' ? '👨‍🍳 Chef' :
+                     '👥 Staff'}
+                  </span>
+                  <button
+                    onClick={() => {
+                      localStorage.removeItem('userRole');
+                      setUserRole(null);
+                      setShowRoleSelector(true);
+                      setActiveTab(tabs[0]?.id || 'dashboard');
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-800"
+                  >
+                    Switch Role
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
+      </nav>
 
-      </div>
-      <div className="flex items-center space-x-4">
-        <div className="text-sm text-gray-600">
-          Central Prep Kitchen | Eastham & Bethnal Green Locations
+      {/* Role Selector Modal */}
+      {showRoleSelector && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full">
+            <h2 className="text-2xl font-bold mb-6 text-center">Welcome! Select Your Role</h2>
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setUserRole('owner');
+                  localStorage.setItem('userRole', 'owner');
+                  setShowRoleSelector(false);
+                }}
+                className="w-full p-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+              >
+                <div className="font-bold text-lg">👑 Owner</div>
+                <div className="text-sm mt-1">Full access to all features</div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setUserRole('manager');
+                  localStorage.setItem('userRole', 'manager');
+                  setShowRoleSelector(false);
+                }}
+                className="w-full p-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              >
+                <div className="font-bold text-lg">💼 Manager</div>
+                <div className="text-sm mt-1">Manage operations, no financial reports</div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setUserRole('chef');
+                  localStorage.setItem('userRole', 'chef');
+                  setShowRoleSelector(false);
+                }}
+                className="w-full p-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+              >
+                <div className="font-bold text-lg">👨‍🍳 Chef</div>
+                <div className="text-sm mt-1">Prep log and dispatch only</div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setUserRole('staff');
+                  localStorage.setItem('userRole', 'staff');
+                  setShowRoleSelector(false);
+                }}
+                className="w-full p-4 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
+              >
+                <div className="font-bold text-lg">👥 Kitchen Staff</div>
+                <div className="text-sm mt-1">Sales tracker and orders</div>
+              </button>
+            </div>
+          </div>
         </div>
-        {userRole && (
-    <div className="flex items-center space-x-2">
-      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-        userRole === 'owner' ? 'bg-purple-100 text-purple-800' :
-        userRole === 'manager' ? 'bg-blue-100 text-blue-800' :
-        userRole === 'chef' ? 'bg-green-100 text-green-800' :
-        'bg-orange-100 text-orange-800'
-      }`}>
-        {userRole === 'owner' ? '👑 Owner' :
-         userRole === 'manager' ? '💼 Manager' :
-         userRole === 'chef' ? '👨‍🍳 Chef' :
-         '👥 Staff'}
-      </span>
-      <button
-        onClick={() => {
-          localStorage.removeItem('userRole');
-          setUserRole(null);
-          setShowRoleSelector(true);
-          setActiveTab(tabs[0]?.id || 'dashboard');
-        }}
-        className="text-xs text-blue-600 hover:text-blue-800"
-      >
-        Switch Role
-      </button>
-      <button
-  onClick={handleLogout}
-  className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
->
-  Logout
-</button>
-    </div>
-  )}
-
-      </div>
-    </div>
-  </div>
-</nav>
-
-
-{/* Role Selector Modal */}
-{showRoleSelector && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-    <div className="bg-white rounded-lg p-8 max-w-md w-full">
-      <h2 className="text-2xl font-bold mb-6 text-center">Welcome! Select Your Role</h2>
-      <div className="space-y-3">
-        <button
-          onClick={() => {
-            setUserRole('owner');
-            localStorage.setItem('userRole', 'owner');
-            setShowRoleSelector(false);
-          }}
-          className="w-full p-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
-        >
-          <div className="font-bold text-lg">👑 Owner</div>
-          <div className="text-sm mt-1">Full access to all features</div>
-        </button>
-
-        <button
-          onClick={() => {
-            setUserRole('manager');
-            localStorage.setItem('userRole', 'manager');
-            setShowRoleSelector(false);
-          }}
-          className="w-full p-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-        >
-          <div className="font-bold text-lg">💼 Manager</div>
-          <div className="text-sm mt-1">Manage operations, no financial reports</div>
-        </button>
-
-        <button
-          onClick={() => {
-            setUserRole('chef');
-            localStorage.setItem('userRole', 'chef');
-            setShowRoleSelector(false);
-          }}
-          className="w-full p-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-        >
-          <div className="font-bold text-lg">👨‍🍳 Chef</div>
-          <div className="text-sm mt-1">Prep log and dispatch only</div>
-        </button>
-
-        <button
-          onClick={() => {
-            setUserRole('staff');
-            localStorage.setItem('userRole', 'staff');
-            setShowRoleSelector(false);
-          }}
-          className="w-full p-4 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
-        >
-          <div className="font-bold text-lg">👥 Kitchen Staff</div>
-          <div className="text-sm mt-1">Sales tracker and orders</div>
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-
-
+      )}
 
       <div className="flex">
         <aside className="w-64 bg-white shadow-sm min-h-screen">
@@ -2112,394 +1871,385 @@ const handleDeleteInventoryItem = async (itemId, itemName) => {
         </aside>
 
         <main className="flex-1">
-        {activeTab === 'dashboard' && (
-<EnhancedMainDashboard
-  sales={sales}
-  dispatch={dispatch}
-  prepLog={prepLog}
-  inventory={inventory}
-  wasteLog={wasteLog}
-  recipes={recipes}
-  calculateDishCost={calculateDishCost}
-  shopStatuses={shopStatuses}
-  currentUser={currentUser}
-  userRole={userRole}
-  onQuickAction={handleQuickAction}
-/>
-)}
-
-          {/* 3. ENHANCED PREP LOG COMPONENT - Replace your existing prep tab content */}
-
+          {activeTab === 'dashboard' && (
+            <EnhancedMainDashboard
+              sales={sales}
+              dispatch={dispatch}
+              prepLog={prepLog}
+              inventory={inventory}
+              wasteLog={wasteLog}
+              recipes={recipes}
+              calculateDishCost={calculateDishCost}
+              shopStatuses={shopStatuses}
+              currentUser={currentUser}
+              userRole={userRole}
+              onQuickAction={handleQuickAction}
+            />
+          )}
 
           {activeTab === 'prep' && (
-        <EnhancedPrepLog
-          prepLog={prepLog}
-          setPrepLog={setPrepLog}
-          recipes={recipes}
-          inventory={inventory}
-          sales={sales}
-          calculateDishCost={calculateDishCost}
-          checkIngredientAvailability={checkIngredientAvailability}
-          getAllDishNames={getAllDishNames}  // ADD THIS LINE
-        />
-      )}
+            <EnhancedPrepLog
+              prepLog={prepLog}
+              setPrepLog={setPrepLog}
+              recipes={recipes}
+              inventory={inventory}
+              sales={sales}
+              calculateDishCost={calculateDishCost}
+              checkIngredientAvailability={checkIngredientAvailability}
+              getAllDishNames={getAllDishNames}
+            />
+          )}
 
-      {activeTab === 'dispatch' && (
-        <EnhancedDispatch
-          dispatch={dispatch}
-          setDispatch={setDispatch}
-          prepLog={prepLog}
-          setPrepLog={setPrepLog}
-          sales={sales}
-          setSales={setSales}
-          calculateDishCost={calculateDishCost}
-          getAllDishNames={getAllDishNames}
-          saveToDatabase={saveToDatabase}
-        />
-      )}
+          {activeTab === 'dispatch' && (
+            <EnhancedDispatch
+              dispatch={dispatch}
+              setDispatch={setDispatch}
+              prepLog={prepLog}
+              setPrepLog={setPrepLog}
+              sales={sales}
+              setSales={setSales}
+              calculateDishCost={calculateDishCost}
+              getAllDishNames={getAllDishNames}
+              saveToDatabase={saveToDatabase}
+            />
+          )}
 
+          {activeTab === 'sales' && (
+            <EnhancedSales
+              sales={sales}
+              setSales={setSales}
+              dispatch={dispatch}
+              setDispatch={setDispatch}
+              saveToDatabase={saveToDatabase}
+              getAllDishNames={getAllDishNames}
+            />
+          )}
 
-  {activeTab === 'sales' && (
-    <EnhancedSales
-      sales={sales}
-      setSales={setSales}
-      dispatch={dispatch}
-      setDispatch={setDispatch}
-      saveToDatabase={saveToDatabase}
-      getAllDishNames={getAllDishNames}
-    />
-  )}
+          {activeTab === 'daily-checks' && (
+            <ShopDailyChecks
+              currentUser={currentUser}
+              selectedLocation={selectedSalesLocation || 'Eastham'}
+            />
+          )}
 
-  {activeTab === 'daily-checks' && (
-    <ShopDailyChecks
-      currentUser={currentUser}
-      selectedLocation={selectedSalesLocation || 'Eastham'}
-    />
-  )}
-
-  {activeTab === 'old-stock' && (
-<OldStockOffersManager
-sales={sales}
-dispatch={dispatch}
-prepLog={prepLog}
-calculateDishCost={calculateDishCost}
-onCreateOffer={handleCreateOffer}
-onSendNotification={handleSendNotification}
-/>
-)}
+          {activeTab === 'old-stock' && (
+            <OldStockOffersManager
+              sales={sales}
+              dispatch={dispatch}
+              prepLog={prepLog}
+              calculateDishCost={calculateDishCost}
+              onCreateOffer={handleCreateOffer}
+              onSendNotification={handleSendNotification}
+            />
+          )}
 
           {activeTab === 'waste' && <WasteTracking />}
 
           {activeTab === 'reports' && <Reports />}
 
           {activeTab === 'recipe-bank' && (
-      <EnhancedRecipeBank
-        recipes={recipes}
-        setRecipes={setRecipes}
-        inventory={inventory}
-        setInventory={setInventory}
-        userRole={userRole}
-        calculateDishCost={calculateDishCost}
-      />
-    )}
+            <EnhancedRecipeBank
+              recipes={recipes}
+              setRecipes={setRecipes}
+              inventory={inventory}
+              setInventory={setInventory}
+              userRole={userRole}
+              calculateDishCost={calculateDishCost}
+            />
+          )}
 
-    {activeTab === 'inventory' && (
-      <div className="p-6">
-        <h2 className="text-2xl font-bold mb-6 flex items-center">
-          <Package className="mr-2" /> Inventory Tracker
-        </h2>
+          {activeTab === 'inventory' && (
+            <div className="p-6">
+              <h2 className="text-2xl font-bold mb-6 flex items-center">
+                <Package className="mr-2" /> Inventory Tracker
+              </h2>
 
-        {/* Add Item Button */}
-        <div className="mb-4">
-          <button
-            onClick={() => {
-              setShowAddInventoryItem(!showAddInventoryItem);
-              setEditingInventoryItem(null);
-              setNewInventoryItem({
-                name: '',
-                unit: 'kg',
-                openingStock: '',
-                receivedThisWeek: '',
-                reorderLevel: '',
-                unitCost: '',
-                supplier: 'Local Supplier',
-                category: 'Dry Items'
-              });
-            }}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center"
-          >
-            <Plus className="mr-2" size={20} />
-            Add New Item
-          </button>
-        </div>
-
-        {/* Add/Edit Item Form */}
-        {(showAddInventoryItem || editingInventoryItem) && (
-          <div className="bg-white border-2 border-green-500 rounded-lg p-6 mb-6">
-            <h3 className="text-lg font-semibold mb-4 text-green-700">
-              {editingInventoryItem ? 'Edit Inventory Item' : 'Add New Inventory Item'}
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Item Name *</label>
-                <input
-                  type="text"
-                  value={newInventoryItem.name}
-                  onChange={(e) => setNewInventoryItem(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full p-2 border rounded-lg"
-                  placeholder="e.g. Chicken Thigh"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Category *</label>
-                <select
-                  value={newInventoryItem.category}
-                  onChange={(e) => setNewInventoryItem(prev => ({ ...prev, category: e.target.value }))}
-                  className="w-full p-2 border rounded-lg"
-                >
-                  <option value="Meat">Meat</option>
-                  <option value="Seafood">Seafood</option>
-                  <option value="Vegetables">Vegetables</option>
-                  <option value="Dairy">Dairy</option>
-                  <option value="Dry Items">Dry Items</option>
-                  <option value="Spices">Spices</option>
-                  <option value="Miscellaneous">Miscellaneous</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Unit *</label>
-                <select
-                  value={newInventoryItem.unit}
-                  onChange={(e) => setNewInventoryItem(prev => ({ ...prev, unit: e.target.value }))}
-                  className="w-full p-2 border rounded-lg"
-                >
-                  <option value="kg">kg</option>
-                  <option value="litre">litre</option>
-                  <option value="pieces">pieces</option>
-                  <option value="bunch">bunch</option>
-                  <option value="box">box</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Supplier</label>
-                <select
-                  value={newInventoryItem.supplier}
-                  onChange={(e) => setNewInventoryItem(prev => ({ ...prev, supplier: e.target.value }))}
-                  className="w-full p-2 border rounded-lg"
-                >
-                  <option value="Pacific Seafood">Pacific Seafood</option>
-                  <option value="Booker">Booker</option>
-                  <option value="Local Butcher">Local Butcher</option>
-                  <option value="Fish Market">Fish Market</option>
-                  <option value="Indian Grocers">Indian Grocers</option>
-                  <option value="Local Supplier">Local Supplier</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Opening Stock *</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={newInventoryItem.openingStock}
-                  onChange={(e) => setNewInventoryItem(prev => ({ ...prev, openingStock: e.target.value }))}
-                  className="w-full p-2 border rounded-lg"
-                  placeholder="0"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Received This Week</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={newInventoryItem.receivedThisWeek}
-                  onChange={(e) => setNewInventoryItem(prev => ({ ...prev, receivedThisWeek: e.target.value }))}
-                  className="w-full p-2 border rounded-lg"
-                  placeholder="0"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Reorder Level</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={newInventoryItem.reorderLevel}
-                  onChange={(e) => setNewInventoryItem(prev => ({ ...prev, reorderLevel: e.target.value }))}
-                  className="w-full p-2 border rounded-lg"
-                  placeholder="1"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Unit Cost (£) *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={newInventoryItem.unitCost}
-                  onChange={(e) => setNewInventoryItem(prev => ({ ...prev, unitCost: e.target.value }))}
-                  className="w-full p-2 border rounded-lg"
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-
-            <div className="flex space-x-3">
-              {editingInventoryItem ? (
+              <div className="mb-4">
                 <button
-                  onClick={handleUpdateInventoryItem}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
+                  onClick={() => {
+                    setShowAddInventoryItem(!showAddInventoryItem);
+                    setEditingInventoryItem(null);
+                    setNewInventoryItem({
+                      name: '',
+                      unit: 'kg',
+                      openingStock: '',
+                      receivedThisWeek: '',
+                      reorderLevel: '',
+                      unitCost: '',
+                      supplier: 'Local Supplier',
+                      category: 'Dry Items'
+                    });
+                  }}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center"
                 >
-                  <Save className="mr-2" size={16} />
-                  Update Item
+                  <Plus className="mr-2" size={20} />
+                  Add New Item
                 </button>
-              ) : (
-                <button
-                  onClick={handleAddInventoryItem}
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center"
-                >
-                  <Plus className="mr-2" size={16} />
-                  Add Item
-                </button>
+              </div>
+
+              {(showAddInventoryItem || editingInventoryItem) && (
+                <div className="bg-white border-2 border-green-500 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold mb-4 text-green-700">
+                    {editingInventoryItem ? 'Edit Inventory Item' : 'Add New Inventory Item'}
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Item Name *</label>
+                      <input
+                        type="text"
+                        value={newInventoryItem.name}
+                        onChange={(e) => setNewInventoryItem(prev => ({ ...prev, name: e.target.value }))}
+                        className="w-full p-2 border rounded-lg"
+                        placeholder="e.g. Chicken Thigh"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Category *</label>
+                      <select
+                        value={newInventoryItem.category}
+                        onChange={(e) => setNewInventoryItem(prev => ({ ...prev, category: e.target.value }))}
+                        className="w-full p-2 border rounded-lg"
+                      >
+                        <option value="Meat">Meat</option>
+                        <option value="Seafood">Seafood</option>
+                        <option value="Vegetables">Vegetables</option>
+                        <option value="Dairy">Dairy</option>
+                        <option value="Dry Items">Dry Items</option>
+                        <option value="Spices">Spices</option>
+                        <option value="Miscellaneous">Miscellaneous</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Unit *</label>
+                      <select
+                        value={newInventoryItem.unit}
+                        onChange={(e) => setNewInventoryItem(prev => ({ ...prev, unit: e.target.value }))}
+                        className="w-full p-2 border rounded-lg"
+                      >
+                        <option value="kg">kg</option>
+                        <option value="litre">litre</option>
+                        <option value="pieces">pieces</option>
+                        <option value="bunch">bunch</option>
+                        <option value="box">box</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Supplier</label>
+                      <select
+                        value={newInventoryItem.supplier}
+                        onChange={(e) => setNewInventoryItem(prev => ({ ...prev, supplier: e.target.value }))}
+                        className="w-full p-2 border rounded-lg"
+                      >
+                        <option value="Pacific Seafood">Pacific Seafood</option>
+                        <option value="Booker">Booker</option>
+                        <option value="Local Butcher">Local Butcher</option>
+                        <option value="Fish Market">Fish Market</option>
+                        <option value="Indian Grocers">Indian Grocers</option>
+                        <option value="Local Supplier">Local Supplier</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Opening Stock *</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={newInventoryItem.openingStock}
+                        onChange={(e) => setNewInventoryItem(prev => ({ ...prev, openingStock: e.target.value }))}
+                        className="w-full p-2 border rounded-lg"
+                        placeholder="0"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Received This Week</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={newInventoryItem.receivedThisWeek}
+                        onChange={(e) => setNewInventoryItem(prev => ({ ...prev, receivedThisWeek: e.target.value }))}
+                        className="w-full p-2 border rounded-lg"
+                        placeholder="0"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Reorder Level</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={newInventoryItem.reorderLevel}
+                        onChange={(e) => setNewInventoryItem(prev => ({ ...prev, reorderLevel: e.target.value }))}
+                        className="w-full p-2 border rounded-lg"
+                        placeholder="1"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Unit Cost (£) *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={newInventoryItem.unitCost}
+                        onChange={(e) => setNewInventoryItem(prev => ({ ...prev, unitCost: e.target.value }))}
+                        className="w-full p-2 border rounded-lg"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex space-x-3">
+                    {editingInventoryItem ? (
+                      <button
+                        onClick={handleUpdateInventoryItem}
+                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
+                      >
+                        <Save className="mr-2" size={16} />
+                        Update Item
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleAddInventoryItem}
+                        className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center"
+                      >
+                        <Plus className="mr-2" size={16} />
+                        Add Item
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        setShowAddInventoryItem(false);
+                        setEditingInventoryItem(null);
+                        setNewInventoryItem({
+                          name: '',
+                          unit: 'kg',
+                          openingStock: '',
+                          receivedThisWeek: '',
+                          reorderLevel: '',
+                          unitCost: '',
+                          supplier: 'Local Supplier',
+                          category: 'Dry Items'
+                        });
+                      }}
+                      className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               )}
 
-              <button
-                onClick={() => {
-                  setShowAddInventoryItem(false);
-                  setEditingInventoryItem(null);
-                  setNewInventoryItem({
-                    name: '',
-                    unit: 'kg',
-                    openingStock: '',
-                    receivedThisWeek: '',
-                    reorderLevel: '',
-                    unitCost: '',
-                    supplier: 'Local Supplier',
-                    category: 'Dry Items'
-                  });
-                }}
-                className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
-              >
-                Cancel
-              </button>
+              <div className="overflow-x-auto">
+                <table className="min-w-full bg-white border rounded-lg">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left">Item</th>
+                      <th className="px-4 py-2 text-left">Category</th>
+                      <th className="px-4 py-2 text-left">Unit</th>
+                      <th className="px-4 py-2 text-left">Opening</th>
+                      <th className="px-4 py-2 text-left">Received</th>
+                      <th className="px-4 py-2 text-left">Used</th>
+                      <th className="px-4 py-2 text-left">Closing</th>
+                      <th className="px-4 py-2 text-left">Reorder</th>
+                      <th className="px-4 py-2 text-left">Cost/Unit</th>
+                      <th className="px-4 py-2 text-left">Value</th>
+                      <th className="px-4 py-2 text-left">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getInventoryMetrics().map(item => (
+                      <tr key={item.id} className={item.closingBalance <= item.reorderLevel ? 'bg-red-50' : ''}>
+                        <td className="px-4 py-2 font-medium">{item.name}</td>
+                        <td className="px-4 py-2">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            item.category === 'Meat' ? 'bg-red-100 text-red-800' :
+                            item.category === 'Vegetables' ? 'bg-green-100 text-green-800' :
+                            item.category === 'Spices' ? 'bg-orange-100 text-orange-800' :
+                            item.category === 'Seafood' ? 'bg-cyan-100 text-cyan-800' :
+                            item.category === 'Dairy' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {item.category}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2">{item.unit}</td>
+                        <td className="px-4 py-2">{item.openingStock}</td>
+                        <td className="px-4 py-2">{item.receivedThisWeek}</td>
+                        <td className="px-4 py-2">{item.usedThisWeek.toFixed(2)}</td>
+                        <td className="px-4 py-2">
+                          <span className={item.closingBalance <= item.reorderLevel ? 'text-red-600 font-bold' : ''}>
+                            {item.closingBalance.toFixed(2)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2">{item.reorderLevel}</td>
+                        <td className="px-4 py-2">£{item.unitCost.toFixed(2)}</td>
+                        <td className="px-4 py-2">£{item.stockValue.toFixed(2)}</td>
+                        <td className="px-4 py-2">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleEditInventoryItem(item)}
+                              className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                              title="Edit Item"
+                            >
+                              <Edit size={16} />
+                            </button>
+                            {userRole === 'owner' && (
+                              <button
+                                onClick={() => handleDeleteInventoryItem(item.id, item.name)}
+                                className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                title="Delete Item"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="text-sm text-gray-600">Total Items</div>
+                  <div className="text-2xl font-bold text-blue-600">{inventory.length}</div>
+                </div>
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <div className="text-sm text-gray-600">Total Stock Value</div>
+                  <div className="text-2xl font-bold text-green-600">
+                    £{getInventoryMetrics().reduce((sum, item) => sum + item.stockValue, 0).toFixed(2)}
+                  </div>
+                </div>
+                <div className="bg-red-50 p-4 rounded-lg">
+                  <div className="text-sm text-gray-600">Low Stock Items</div>
+                  <div className="text-2xl font-bold text-red-600">
+                    {getInventoryMetrics().filter(item => item.closingBalance <= item.reorderLevel).length}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Inventory Table */}
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white border rounded-lg">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left">Item</th>
-                <th className="px-4 py-2 text-left">Category</th>
-                <th className="px-4 py-2 text-left">Unit</th>
-                <th className="px-4 py-2 text-left">Opening</th>
-                <th className="px-4 py-2 text-left">Received</th>
-                <th className="px-4 py-2 text-left">Used</th>
-                <th className="px-4 py-2 text-left">Closing</th>
-                <th className="px-4 py-2 text-left">Reorder</th>
-                <th className="px-4 py-2 text-left">Cost/Unit</th>
-                <th className="px-4 py-2 text-left">Value</th>
-                <th className="px-4 py-2 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {getInventoryMetrics().map(item => (
-                <tr key={item.id} className={item.closingBalance <= item.reorderLevel ? 'bg-red-50' : ''}>
-                  <td className="px-4 py-2 font-medium">{item.name}</td>
-                  <td className="px-4 py-2">
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      item.category === 'Meat' ? 'bg-red-100 text-red-800' :
-                      item.category === 'Vegetables' ? 'bg-green-100 text-green-800' :
-                      item.category === 'Spices' ? 'bg-orange-100 text-orange-800' :
-                      item.category === 'Seafood' ? 'bg-cyan-100 text-cyan-800' :
-                      item.category === 'Dairy' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {item.category}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2">{item.unit}</td>
-                  <td className="px-4 py-2">{item.openingStock}</td>
-                  <td className="px-4 py-2">{item.receivedThisWeek}</td>
-                  <td className="px-4 py-2">{item.usedThisWeek.toFixed(2)}</td>
-                  <td className="px-4 py-2">
-                    <span className={item.closingBalance <= item.reorderLevel ? 'text-red-600 font-bold' : ''}>
-                      {item.closingBalance.toFixed(2)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2">{item.reorderLevel}</td>
-                  <td className="px-4 py-2">£{item.unitCost.toFixed(2)}</td>
-                  <td className="px-4 py-2">£{item.stockValue.toFixed(2)}</td>
-                  <td className="px-4 py-2">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleEditInventoryItem(item)}
-                        className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                        title="Edit Item"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      {userRole === 'owner' && (
-                        <button
-                          onClick={() => handleDeleteInventoryItem(item.id, item.name)}
-                          className="p-1 text-red-600 hover:bg-red-50 rounded"
-                          title="Delete Item"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Summary Stats */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <div className="text-sm text-gray-600">Total Items</div>
-            <div className="text-2xl font-bold text-blue-600">{inventory.length}</div>
-          </div>
-          <div className="bg-green-50 p-4 rounded-lg">
-            <div className="text-sm text-gray-600">Total Stock Value</div>
-            <div className="text-2xl font-bold text-green-600">
-              £{getInventoryMetrics().reduce((sum, item) => sum + item.stockValue, 0).toFixed(2)}
-            </div>
-          </div>
-          <div className="bg-red-50 p-4 rounded-lg">
-            <div className="text-sm text-gray-600">Low Stock Items</div>
-            <div className="text-2xl font-bold text-red-600">
-              {getInventoryMetrics().filter(item => item.closingBalance <= item.reorderLevel).length}
-            </div>
-          </div>
-        </div>
-      </div>
-    )}
-
-    {activeTab === 'smart-planning' && (
-      <SmartPlanningDashboard
-        sales={sales}
-        dispatch={dispatch}
-        prepLog={prepLog}
-        inventory={inventory}
-        recipes={recipes}
-        getAllDishNames={getAllDishNames}
-        calculateDishCost={calculateDishCost}
-        onQuickPrep={handleQuickPrep}
-      />
-    )}
-
+          {activeTab === 'smart-planning' && (
+            <SmartPlanningDashboard
+              sales={sales}
+              dispatch={dispatch}
+              prepLog={prepLog}
+              inventory={inventory}
+              recipes={recipes}
+              getAllDishNames={getAllDishNames}
+              calculateDishCost={calculateDishCost}
+              onQuickPrep={handleQuickPrep}
+            />
+          )}
 
           {activeTab === 'users' && currentPermissions.tabs.includes('users') && <UserManagement />}
 

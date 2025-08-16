@@ -1902,16 +1902,17 @@ const KitchenERP = () => {
 
           {activeTab === 'dispatch' && (
             <EnhancedDispatch
-              dispatch={dispatch}
-              setDispatch={setDispatch}
-              prepLog={prepLog}
-              setPrepLog={setPrepLog}
-              sales={sales}
-              setSales={setSales}
-              calculateDishCost={calculateDishCost}
-              getAllDishNames={getAllDishNames}
-              saveToDatabase={saveToDatabase}
-            />
+      dispatch={dispatch}
+      setDispatch={setDispatch}
+      prepLog={prepLog}
+      setPrepLog={setPrepLog}
+      sales={sales}
+      setSales={setSales}
+      calculateDishCost={calculateDishCost}
+      getAllDishNames={getAllDishNames}
+      saveToDatabase={saveToDatabase}
+      inventory={inventory}  // <-- Make sure this line exists
+    />
           )}
 
           {activeTab === 'sales' && (

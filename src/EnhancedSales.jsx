@@ -119,7 +119,9 @@ const EnhancedSales = ({
     'Veg Samosa': 'Starters',
     'Onion Bhaji': 'Starters',
     'Salan': 'Sides',
-    'Raitha': 'Sides'
+    'Raitha': 'Sides',
+    'DEFAULT': 'Non-Food Items'
+
   };
 
   // Initialize stock data from sales and dispatch
@@ -133,7 +135,7 @@ const EnhancedSales = ({
     const todayDate = new Date().toISOString().split('T')[0];
 
     allDishes.forEach(dish => {
-      const category = dishCategories[dish] || 'Other';
+    const category = dishCategories[dish] || 'Non-Food Items';
 
       // Get all active batches for this dish at this location
       const activeBatches = [];
@@ -182,6 +184,64 @@ const EnhancedSales = ({
         s.date === todayDate &&
         !s.endOfDay
       );
+
+      // ADD THIS NEW SECTION: Process non-food items
+      const nonFoodItems = sales.filter(s =>
+        s.location === selectedLocation &&
+        s.date === todayDate &&
+        (s.isNonFood === true || s.dispatchMode === 'inventory' || s.itemType !== 'food')
+      );
+
+      // Group non-food items by name
+      const nonFoodGrouped = {};
+      nonFoodItems.forEach(item => {
+        if (!nonFoodGrouped[item.dishName]) {
+          nonFoodGrouped[item.dishName] = {
+            dishName: item.dishName,
+            category: 'Non-Food Items',
+            oldStock: 0,
+            receivedToday: item.receivedPortions || 0,
+            remaining: item.remainingPortions || 0,
+            soldToday: (item.receivedPortions || 0) - (item.remainingPortions || 0),
+            totalAvailable: item.remainingPortions || 0,
+            batches: [{
+              id: item.id,
+              batchNumber: item.batchNumber || `NFI-${item.id}`,
+              receivedPortions: item.receivedPortions || 0,
+              remainingPortions: item.remainingPortions || 0,
+              dateMade: item.dateMade || todayDate,
+              dateReceived: todayDate,
+              expiryDate: null, // Non-food items don't expire
+              isOldStock: false,
+              preparedBy: item.preparedBy || 'Inventory',
+              storageLocation: 'Storage',
+              itemType: item.itemType || 'non-food',
+              dispatchMode: item.dispatchMode
+            }],
+            isLowStock: false,
+            isOutOfStock: (item.remainingPortions || 0) === 0,
+            needsUrgentRestock: false
+          };
+        } else {
+          // Aggregate if same item appears multiple times
+          nonFoodGrouped[item.dishName].receivedToday += (item.receivedPortions || 0);
+          nonFoodGrouped[item.dishName].remaining += (item.remainingPortions || 0);
+          nonFoodGrouped[item.dishName].totalAvailable += (item.remainingPortions || 0);
+          nonFoodGrouped[item.dishName].soldToday += ((item.receivedPortions || 0) - (item.remainingPortions || 0));
+        }
+      });
+
+      // Merge non-food items into locationStock
+      Object.values(nonFoodGrouped).forEach(item => {
+        locationStock[item.dishName] = item;
+      });
+
+const nonFoodSales = sales.filter(s =>
+  s.location === selectedLocation &&
+  s.date === todayDate &&
+  !s.endOfDay &&
+  (s.isNonFood === true || s.itemType !== 'food' || s.dispatchMode === 'inventory')
+);
 
       // Process today's dispatches
       todayDispatches.forEach(d => {
@@ -551,7 +611,7 @@ const EnhancedSales = ({
   };
 
   const filteredStock = getFilteredStock();
-  const categories = ['all', ...new Set(Object.values(dishCategories))];
+  const categories = ['all', ...new Set([...Object.values(dishCategories), 'Non-Food Items'])];
   const currentShopStatus = shopStatus[selectedLocation];
 
   // Calculate statistics

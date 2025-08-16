@@ -13,6 +13,20 @@ const EnhancedDispatch = ({
   saveToDatabase,
   inventory = []
 }) => {
+
+  console.log('=== DISPATCH COMPONENT DEBUG ===');
+ console.log('Inventory prop received:', inventory);
+ console.log('Inventory length:', inventory?.length);
+ console.log('First inventory item:', inventory?.[0]);
+ // Then check specifically for Miscellaneous items
+  if (inventory && inventory.length > 0) {
+    const miscItems = inventory.filter(item => item.category === 'Miscellaneous');
+    console.log('Items with Miscellaneous category:', miscItems);
+
+    // Also show all unique categories
+    const allCategories = [...new Set(inventory.map(item => item.category))];
+    console.log('All unique categories in inventory:', allCategories);
+  }
   // State for dispatch mode
   const [dispatchMode, setDispatchMode] = useState('prep'); // 'prep', 'coldroom', 'manual', 'inventory'
 
@@ -280,84 +294,103 @@ const EnhancedDispatch = ({
     }
 
     // Create sales entries for locations
-    if (eastham > 0) {
-      const easthamSalesEntry = {
-        id: sales && sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 100 : 100,
-        dishName: newDispatchEntry.dishName,
-        location: 'Eastham',
-        receivedPortions: eastham,
-        remainingPortions: eastham,
-        date: new Date().toISOString().split('T')[0],
-        time: new Date().toLocaleTimeString(),
-        updatedBy: 'Auto-Created from Dispatch',
-        autoCreated: true,
-        batchNumber: batchInfo.batchNumber,
-        expiryDate: batchInfo.expiryDate,
-        dateMade: batchInfo.dateMade,
-        preparedBy: batchInfo.preparedBy,
-        containerSize: batchInfo.containerSize,
-        itemType: newEntry.itemType
-      };
+if (eastham > 0) {
+  const easthamSalesEntry = {
+    id: sales && sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 100 : 100,
+    dishName: newDispatchEntry.dishName,
+    location: 'Eastham',
+    receivedPortions: eastham,
+    remainingPortions: eastham,
+    date: new Date().toISOString().split('T')[0],
+    time: new Date().toLocaleTimeString(),
+    updatedBy: 'Auto-Created from Dispatch',
+    autoCreated: true,
+    batchNumber: batchInfo.batchNumber,
+    expiryDate: batchInfo.expiryDate,
+    dateMade: batchInfo.dateMade,
+    preparedBy: batchInfo.preparedBy,
+    containerSize: batchInfo.containerSize,
+    itemType: newEntry.itemType,
+    // ADD THESE NEW FIELDS
+    dispatchMode: dispatchMode,  // <-- ADD THIS
+    fromColdRoom: dispatchMode === 'coldroom',  // <-- ADD THIS
+    isNonFood: dispatchMode === 'inventory',  // <-- ADD THIS
+    isManualEntry: dispatchMode === 'manual'  // <-- ADD THIS
+  };
 
-      if (saveToDatabase && typeof saveToDatabase === 'function') {
-        await saveToDatabase('sales', {
-          dish_name: easthamSalesEntry.dishName,
-          location: easthamSalesEntry.location,
-          received_portions: easthamSalesEntry.receivedPortions,
-          remaining_portions: easthamSalesEntry.remainingPortions,
-          updated_by: easthamSalesEntry.updatedBy,
-          auto_created: true,
-          batch_number: easthamSalesEntry.batchNumber,
-          expiry_date: easthamSalesEntry.expiryDate,
-          date_made: easthamSalesEntry.dateMade,
-          prepared_by: easthamSalesEntry.preparedBy,
-          container_size: easthamSalesEntry.containerSize,
-          item_type: easthamSalesEntry.itemType
-        });
-      }
+  if (saveToDatabase && typeof saveToDatabase === 'function') {
+    await saveToDatabase('sales', {
+      dish_name: easthamSalesEntry.dishName,
+      location: easthamSalesEntry.location,
+      received_portions: easthamSalesEntry.receivedPortions,
+      remaining_portions: easthamSalesEntry.remainingPortions,
+      updated_by: easthamSalesEntry.updatedBy,
+      auto_created: true,
+      batch_number: easthamSalesEntry.batchNumber,
+      expiry_date: easthamSalesEntry.expiryDate,
+      date_made: easthamSalesEntry.dateMade,
+      prepared_by: easthamSalesEntry.preparedBy,
+      container_size: easthamSalesEntry.containerSize,
+      item_type: easthamSalesEntry.itemType,
+      // ADD THESE TO DATABASE SAVE TOO
+      dispatch_mode: dispatchMode,  // <-- ADD THIS
+      from_cold_room: dispatchMode === 'coldroom',  // <-- ADD THIS
+      is_non_food: dispatchMode === 'inventory',  // <-- ADD THIS
+      is_manual_entry: dispatchMode === 'manual'  // <-- ADD THIS
+    });
+  }
 
-      setSales && setSales(prev => [...prev, easthamSalesEntry]);
-    }
+  setSales && setSales(prev => [...prev, easthamSalesEntry]);
+}
 
-    if (bethnal > 0) {
-      const bethnalSalesEntry = {
-        id: sales && sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 200 : 200,
-        dishName: newDispatchEntry.dishName,
-        location: 'Bethnal Green',
-        receivedPortions: bethnal,
-        remainingPortions: bethnal,
-        date: new Date().toISOString().split('T')[0],
-        time: new Date().toLocaleTimeString(),
-        updatedBy: 'Auto-Created from Dispatch',
-        autoCreated: true,
-        batchNumber: batchInfo.batchNumber,
-        expiryDate: batchInfo.expiryDate,
-        dateMade: batchInfo.dateMade,
-        preparedBy: batchInfo.preparedBy,
-        containerSize: batchInfo.containerSize,
-        itemType: newEntry.itemType
-      };
+if (bethnal > 0) {
+  const bethnalSalesEntry = {
+    id: sales && sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 200 : 200,
+    dishName: newDispatchEntry.dishName,
+    location: 'Bethnal Green',
+    receivedPortions: bethnal,
+    remainingPortions: bethnal,
+    date: new Date().toISOString().split('T')[0],
+    time: new Date().toLocaleTimeString(),
+    updatedBy: 'Auto-Created from Dispatch',
+    autoCreated: true,
+    batchNumber: batchInfo.batchNumber,
+    expiryDate: batchInfo.expiryDate,
+    dateMade: batchInfo.dateMade,
+    preparedBy: batchInfo.preparedBy,
+    containerSize: batchInfo.containerSize,
+    itemType: newEntry.itemType,
+    // ADD THESE NEW FIELDS
+    dispatchMode: dispatchMode,  // <-- ADD THIS
+    fromColdRoom: dispatchMode === 'coldroom',  // <-- ADD THIS
+    isNonFood: dispatchMode === 'inventory',  // <-- ADD THIS
+    isManualEntry: dispatchMode === 'manual'  // <-- ADD THIS
+  };
 
-      if (saveToDatabase && typeof saveToDatabase === 'function') {
-        await saveToDatabase('sales', {
-          dish_name: bethnalSalesEntry.dishName,
-          location: bethnalSalesEntry.location,
-          received_portions: bethnalSalesEntry.receivedPortions,
-          remaining_portions: bethnalSalesEntry.remainingPortions,
-          updated_by: bethnalSalesEntry.updatedBy,
-          auto_created: true,
-          batch_number: bethnalSalesEntry.batchNumber,
-          expiry_date: bethnalSalesEntry.expiryDate,
-          date_made: bethnalSalesEntry.dateMade,
-          prepared_by: bethnalSalesEntry.preparedBy,
-          container_size: bethnalSalesEntry.containerSize,
-          item_type: bethnalSalesEntry.itemType
-        });
-      }
+  if (saveToDatabase && typeof saveToDatabase === 'function') {
+    await saveToDatabase('sales', {
+      dish_name: bethnalSalesEntry.dishName,
+      location: bethnalSalesEntry.location,
+      received_portions: bethnalSalesEntry.receivedPortions,
+      remaining_portions: bethnalSalesEntry.remainingPortions,
+      updated_by: bethnalSalesEntry.updatedBy,
+      auto_created: true,
+      batch_number: bethnalSalesEntry.batchNumber,
+      expiry_date: bethnalSalesEntry.expiryDate,
+      date_made: bethnalSalesEntry.dateMade,
+      prepared_by: bethnalSalesEntry.preparedBy,
+      container_size: bethnalSalesEntry.containerSize,
+      item_type: bethnalSalesEntry.itemType,
+      // ADD THESE TO DATABASE SAVE TOO
+      dispatch_mode: dispatchMode,  // <-- ADD THIS
+      from_cold_room: dispatchMode === 'coldroom',  // <-- ADD THIS
+      is_non_food: dispatchMode === 'inventory',  // <-- ADD THIS
+      is_manual_entry: dispatchMode === 'manual'  // <-- ADD THIS
+    });
+  }
 
-      setSales && setSales(prev => [...prev, bethnalSalesEntry]);
-    }
-
+  setSales && setSales(prev => [...prev, bethnalSalesEntry]);
+}
     // Mark prep item as processed if from prep
     if (dispatchMode === 'prep' && newDispatchEntry.prepId && setPrepLog) {
       setPrepLog(prev => prev.map(p =>
@@ -415,29 +448,41 @@ const EnhancedDispatch = ({
       return priorityOrder[statusA.status] - priorityOrder[statusB.status];
     });
 
-  // Get inventory items that can be dispatched (from actual inventory)
-  const dispatchableInventoryItems = (inventory && Array.isArray(inventory) ? inventory : [])
-    .filter(item => {
-      // Filter for non-food items like containers, labels, supplies
-      const itemName = item.itemName?.toLowerCase() || '';
-      return itemName.includes('container') ||
-             itemName.includes('label') ||
-             itemName.includes('bag') ||
-             itemName.includes('napkin') ||
-             itemName.includes('cutlery') ||
-             itemName.includes('box') ||
-             itemName.includes('cup') ||
-             itemName.includes('lid') ||
-             itemName.includes('spoon') ||
-             itemName.includes('fork') ||
-             itemName.includes('knife');
-    })
-    .map(item => ({
-      name: item.itemName,
-      unit: item.unit || 'units',
-      category: item.category || 'other',
-      currentStock: item.currentStock || 0
-    }));
+    const getDispatchableInventoryItems = () => {
+      if (!inventory || !Array.isArray(inventory) || inventory.length === 0) {
+        return [];
+      }
+
+      const miscItems = inventory.filter(item => {
+        return item.category === 'Miscellaneous';
+      });
+
+      return miscItems.map(item => {
+        // Use the closingBalance if it exists, otherwise calculate it
+        let currentStock;
+
+        if (item.closingBalance !== undefined) {
+          currentStock = parseFloat(item.closingBalance);
+        } else {
+          // Fallback calculation if closingBalance doesn't exist
+          const openingStock = parseFloat(item.openingStock || 0);
+          const receivedThisWeek = parseFloat(item.receivedThisWeek || 0);
+          const usedThisWeek = parseFloat(item.usedThisWeek || 0);
+          currentStock = openingStock + receivedThisWeek - usedThisWeek;
+        }
+
+        return {
+          name: item.name,
+          unit: item.unit || 'pieces',
+          category: item.category,
+          currentStock: currentStock,
+          id: item.id
+        };
+      });
+    };
+  // Call the function to get items
+  const dispatchableInventoryItems = getDispatchableInventoryItems();
+
 
   // If no inventory items, show message instead of hardcoded items
   const hasInventoryItems = dispatchableInventoryItems.length > 0;
@@ -622,136 +667,208 @@ const EnhancedDispatch = ({
         </div>
       )}
 
-      {dispatchMode === 'inventory' && (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
-          <h3 className="text-lg font-semibold text-orange-800">📦 Non-Food Items Quick Dispatch</h3>
-          {hasInventoryItems ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
-              {dispatchableInventoryItems.map(item => (
-                <button
-                  key={item.name}
-                  onClick={() => {
-                    setNewDispatchEntry(prev => ({
-                      ...prev,
-                      dishName: item.name,
-                      itemType: item.category,
-                      dispatchType: 'inventory',
-                      batchNumber: `INV-${Date.now()}`
-                    }));
-                  }}
-                  className="p-3 bg-white border border-orange-300 rounded hover:bg-orange-100 transition-all"
-                >
-                  <Box className="mx-auto mb-1" size={20} />
-                  <div className="text-sm font-medium">{item.name}</div>
-                  <div className="text-xs text-gray-600">
-                    {item.currentStock} {item.unit} in stock
-                  </div>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-6">
-              <Box size={48} className="mx-auto mb-3 text-gray-400" />
-              <p className="text-orange-700">No non-food items found in inventory</p>
-              <p className="text-sm text-gray-600 mt-1">
-                Add containers, labels, or supplies to inventory first
-              </p>
-            </div>
-          )}
-        </div>
-      )}
+      {dispatchMode === 'inventory' ? (
+  <select
+    value={newDispatchEntry.dishName}
+    onChange={(e) => {
+      const itemName = e.target.value;
+      const selectedItem = dispatchableInventoryItems.find(item => item.name === itemName);
+      setNewDispatchEntry(prev => ({
+        ...prev,
+        dishName: itemName,
+        // AUTO-FILL THE TOTAL QUANTITY FROM INVENTORY
+        totalCooked: selectedItem ? selectedItem.currentStock.toString() : '',
+        itemType: selectedItem?.category || 'miscellaneous',
+        dispatchType: 'inventory',
+        batchNumber: `INV-${Date.now()}`
+      }));
+    }}
+    className="w-full p-2 border rounded"
+  >
+    <option value="">Select Non-Food Item</option>
+    {dispatchableInventoryItems.map(item => (
+      <option key={item.id} value={item.name}>
+        {item.name} ({Math.floor(item.currentStock)} {item.unit})
+      </option>
+    ))}
+  </select>
+) : dispatchMode === 'manual' ? (
+      <select
+        value={newDispatchEntry.dishName}
+        onChange={(e) => {
+          const dishName = e.target.value;
+          setNewDispatchEntry(prev => ({
+            ...prev,
+            dishName,
+            totalCooked: '',
+            dispatchType: 'manual'
+          }));
+        }}
+        className="w-full p-2 border rounded"
+      >
+        <option value="">Select Dish</option>
+        {getAllDishNames && typeof getAllDishNames === 'function' ?
+          getAllDishNames().map(dish => (
+            <option key={dish} value={dish}>{dish}</option>
+          )) : []
+        }
+      </select>
+    ) : dispatchMode === 'coldroom' ? (
+      <select
+        value={newDispatchEntry.dishName}
+        onChange={(e) => {
+          const dishName = e.target.value;
+          const batchInfo = getColdRoomBatchInfo(dishName);
+          setNewDispatchEntry(prev => ({
+            ...prev,
+            dishName,
+            totalCooked: getColdRoomStockForDish(dishName).toString(),
+            ...(batchInfo || {})
+          }));
+        }}
+        className="w-full p-2 border rounded"
+      >
+        <option value="">Select Dish</option>
+        {Object.keys(coldRoomStock).filter(dish => coldRoomStock[dish].totalPortions > 0).map(dish => (
+          <option key={dish} value={dish}>
+            {dish} ({coldRoomStock[dish].totalPortions}p available)
+          </option>
+        ))}
+      </select>
+    ) : (
+      <input
+        type="text"
+        value={newDispatchEntry.dishName}
+        className="w-full p-2 border rounded bg-gray-50"
+        placeholder="Select from prep items"
+        readOnly
+      />
+    )}
 
-      {/* Dispatch Form */}
-      <div className="dispatch-form bg-white border rounded-lg p-6 mb-6">
-        <h3 className="text-lg font-semibold mb-4">
-          📦 Dispatch Form - {
-            dispatchMode === 'prep' ? 'From Prep Log' :
-            dispatchMode === 'coldroom' ? 'From Cold Room' :
-            dispatchMode === 'manual' ? 'Manual Entry' :
-            'Non-Food Items'
-          }
-        </h3>
+    {/* Dispatch Form */}
+  <div className="dispatch-form bg-white border rounded-lg p-6 mb-6">
+    <h3 className="text-lg font-semibold mb-4">
+      📦 Dispatch Form - {
+        dispatchMode === 'prep' ? 'From Prep Log' :
+        dispatchMode === 'coldroom' ? 'From Cold Room' :
+        dispatchMode === 'manual' ? 'Manual Entry' :
+        'Non-Food Items'
+      }
+    </h3>
 
-        {/* Show cold room alert if applicable */}
-        {dispatchMode === 'prep' && newDispatchEntry.dishName && getColdRoomStockForDish(newDispatchEntry.dishName) > 0 && (
-          <div className="mb-4 p-3 bg-blue-100 border border-blue-300 rounded">
-            <Snowflake className="inline mr-2 text-blue-600" size={16} />
-            <span className="text-sm font-medium text-blue-700">
-              Note: {getColdRoomStockForDish(newDispatchEntry.dishName)} portions already in cold room for {newDispatchEntry.dishName}
-            </span>
-          </div>
+    {/* Show cold room alert if applicable */}
+    {dispatchMode === 'prep' && newDispatchEntry.dishName && getColdRoomStockForDish(newDispatchEntry.dishName) > 0 && (
+      <div className="mb-4 p-3 bg-blue-100 border border-blue-300 rounded">
+        <Snowflake className="inline mr-2 text-blue-600" size={16} />
+        <span className="text-sm font-medium text-blue-700">
+          Note: {getColdRoomStockForDish(newDispatchEntry.dishName)} portions already in cold room for {newDispatchEntry.dishName}
+        </span>
+      </div>
+    )}
+
+    <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+      <div className={dispatchMode === 'inventory' ? 'col-span-2' : ''}>
+        <label className="block text-sm font-medium mb-1">
+          {dispatchMode === 'inventory' ? 'Item Name *' : 'Dish Name *'}
+        </label>
+        {dispatchMode === 'inventory' ? (
+          <select
+            value={newDispatchEntry.dishName}
+            onChange={(e) => {
+              const itemName = e.target.value;
+              const selectedItem = dispatchableInventoryItems.find(item => item.name === itemName);
+              setNewDispatchEntry(prev => ({
+                ...prev,
+                dishName: itemName,
+                // AUTO-FILL THE TOTAL QUANTITY FROM INVENTORY
+                totalCooked: selectedItem ? selectedItem.currentStock.toString() : '',
+                itemType: selectedItem?.category || 'miscellaneous',
+                dispatchType: 'inventory',
+                batchNumber: `INV-${Date.now()}`
+              }));
+            }}
+            className="w-full p-2 border rounded"
+          >
+            <option value="">Select Non-Food Item</option>
+            {dispatchableInventoryItems.map(item => (
+              <option key={item.id} value={item.name}>
+                {item.name} ({Math.floor(item.currentStock)} {item.unit})
+              </option>
+            ))}
+          </select>
+        ) : dispatchMode === 'manual' ? (
+          <select
+            value={newDispatchEntry.dishName}
+            onChange={(e) => {
+              const dishName = e.target.value;
+              setNewDispatchEntry(prev => ({
+                ...prev,
+                dishName,
+                totalCooked: '',
+                dispatchType: 'manual'
+              }));
+            }}
+            className="w-full p-2 border rounded"
+          >
+            <option value="">Select Dish</option>
+            {getAllDishNames && typeof getAllDishNames === 'function' ?
+              getAllDishNames().map(dish => (
+                <option key={dish} value={dish}>{dish}</option>
+              )) : []
+            }
+          </select>
+        ) : dispatchMode === 'coldroom' ? (
+          <select
+            value={newDispatchEntry.dishName}
+            onChange={(e) => {
+              const dishName = e.target.value;
+              const batchInfo = getColdRoomBatchInfo(dishName);
+              setNewDispatchEntry(prev => ({
+                ...prev,
+                dishName,
+                totalCooked: getColdRoomStockForDish(dishName).toString(),
+                ...(batchInfo || {})
+              }));
+            }}
+            className="w-full p-2 border rounded"
+          >
+            <option value="">Select Dish</option>
+            {Object.keys(coldRoomStock).filter(dish => coldRoomStock[dish].totalPortions > 0).map(dish => (
+              <option key={dish} value={dish}>
+                {dish} ({coldRoomStock[dish].totalPortions}p available)
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            type="text"
+            value={newDispatchEntry.dishName}
+            className="w-full p-2 border rounded bg-gray-50"
+            placeholder="Select from prep items"
+            readOnly
+          />
         )}
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-          <div className={dispatchMode === 'inventory' ? 'col-span-2' : ''}>
-            <label className="block text-sm font-medium mb-1">
-              {dispatchMode === 'inventory' ? 'Item Name *' : 'Dish Name *'}
-            </label>
-            {dispatchMode === 'manual' || dispatchMode === 'coldroom' ? (
-              <select
-                value={newDispatchEntry.dishName}
-                onChange={(e) => {
-                  const dishName = e.target.value;
-                  const batchInfo = dispatchMode === 'coldroom' ? getColdRoomBatchInfo(dishName) : {};
-                  setNewDispatchEntry(prev => ({
-                    ...prev,
-                    dishName,
-                    totalCooked: dispatchMode === 'coldroom' ? getColdRoomStockForDish(dishName).toString() : '',
-                    ...(batchInfo || {})
-                  }));
-                }}
-                className="w-full p-2 border rounded"
-              >
-                <option value="">Select {dispatchMode === 'inventory' ? 'Item' : 'Dish'}</option>
-                {dispatchMode === 'coldroom' ? (
-                  Object.keys(coldRoomStock).filter(dish => coldRoomStock[dish].totalPortions > 0).map(dish => (
-                    <option key={dish} value={dish}>
-                      {dish} ({coldRoomStock[dish].totalPortions}p available)
-                    </option>
-                  ))
-                ) : (
-                  getAllDishNames && typeof getAllDishNames === 'function' ?
-                    getAllDishNames().map(dish => (
-                      <option key={dish} value={dish}>{dish}</option>
-                    )) : []
-                )}
-              </select>
-            ) : dispatchMode === 'inventory' ? (
-              <input
-                type="text"
-                value={newDispatchEntry.dishName}
-                onChange={(e) => setNewDispatchEntry(prev => ({ ...prev, dishName: e.target.value }))}
-                className="w-full p-2 border rounded"
-                placeholder="Enter item name"
-              />
-            ) : (
-              <input
-                type="text"
-                value={newDispatchEntry.dishName}
-                className="w-full p-2 border rounded bg-gray-50"
-                placeholder="Select from prep items"
-                readOnly
-              />
-            )}
-          </div>
+      {/* Rest of your form fields... */}
 
           {dispatchMode !== 'coldroom' && (
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Total {dispatchMode === 'inventory' ? 'Quantity' : 'Portions'} *
-              </label>
-              <input
-                type="number"
-                value={newDispatchEntry.totalCooked}
-                onChange={(e) => setNewDispatchEntry(prev => ({ ...prev, totalCooked: e.target.value }))}
-                className={`w-full p-2 border rounded ${
-                  dispatchMode === 'prep' ? 'bg-gray-50' : ''
-                }`}
-                placeholder={dispatchMode === 'prep' ? "Auto-filled" : "Enter quantity"}
-                readOnly={dispatchMode === 'prep'}
-              />
-            </div>
-          )}
+  <div>
+    <label className="block text-sm font-medium mb-1">
+      Total {dispatchMode === 'inventory' ? 'Quantity' : 'Portions'} *
+    </label>
+    <input
+      type="number"
+      value={newDispatchEntry.totalCooked}
+      onChange={(e) => setNewDispatchEntry(prev => ({ ...prev, totalCooked: e.target.value }))}
+      className={`w-full p-2 border rounded ${
+        dispatchMode === 'prep' || dispatchMode === 'inventory' ? 'bg-gray-50' : ''
+      }`}
+      placeholder={dispatchMode === 'prep' || dispatchMode === 'inventory' ? "Auto-filled" : "Enter quantity"}
+      readOnly={dispatchMode === 'prep' || dispatchMode === 'inventory'}
+    />
+  </div>
+)}
 
           <div>
             <label className="block text-sm font-medium mb-1">Eastham</label>

@@ -201,6 +201,7 @@ const EnhancedDispatch = ({
 
   // Handle dispatch submission
   const handleDispatchSubmit = async () => {
+
     if (!newDispatchEntry.dishName) {
       alert('❌ Please select a dish or item name');
       return;
@@ -256,7 +257,7 @@ const EnhancedDispatch = ({
 
     const newEntry = {
       id: dispatch && dispatch.length > 0 ? Math.max(...dispatch.map(d => d.id)) + 1 : 1,
-      date: new Date().toISOString().split('T')[0],
+  date: new Date().toISOString().split('T')[0], // Make sure this is TODAY
       dispatchTime: new Date().toISOString(),
       dishName: newDispatchEntry.dishName,
       totalCooked: dispatchMode === 'coldroom' ? (eastham + bethnal) : total,
@@ -275,6 +276,8 @@ const EnhancedDispatch = ({
     // Save to database
     const dbEntry = {
       dish_name: newEntry.dishName,
+      date: new Date().toISOString().split('T')[0], // ADD THIS LINE
+
       total_cooked: newEntry.totalCooked,
       eastham_sent: newEntry.easthamSent,
       bethnal_sent: newEntry.bethnalSent,
@@ -292,105 +295,102 @@ const EnhancedDispatch = ({
     if (saveToDatabase && typeof saveToDatabase === 'function') {
       await saveToDatabase('dispatch', dbEntry);
     }
-
     // Create sales entries for locations
-if (eastham > 0) {
-  const easthamSalesEntry = {
-    id: sales && sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 100 : 100,
-    dishName: newDispatchEntry.dishName,
-    location: 'Eastham',
-    receivedPortions: eastham,
-    remainingPortions: eastham,
-    date: new Date().toISOString().split('T')[0],
-    time: new Date().toLocaleTimeString(),
-    updatedBy: 'Auto-Created from Dispatch',
-    autoCreated: true,
-    batchNumber: batchInfo.batchNumber,
-    expiryDate: batchInfo.expiryDate,
-    dateMade: batchInfo.dateMade,
-    preparedBy: batchInfo.preparedBy,
-    containerSize: batchInfo.containerSize,
-    itemType: newEntry.itemType,
-    // ADD THESE NEW FIELDS
-    dispatchMode: dispatchMode,  // <-- ADD THIS
-    fromColdRoom: dispatchMode === 'coldroom',  // <-- ADD THIS
-    isNonFood: dispatchMode === 'inventory',  // <-- ADD THIS
-    isManualEntry: dispatchMode === 'manual'  // <-- ADD THIS
-  };
+    if (eastham > 0) {
+      const easthamSalesEntry = {
+        id: sales && sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 100 : 100,
+        dishName: newDispatchEntry.dishName,
+        location: 'Eastham',
+        receivedPortions: eastham,
+        remainingPortions: eastham,
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toLocaleTimeString(),
+        updatedBy: 'Auto-Created from Dispatch',
+        autoCreated: true,
+        batchNumber: batchInfo.batchNumber,
+        expiryDate: batchInfo.expiryDate,
+        dateMade: batchInfo.dateMade,
+        preparedBy: batchInfo.preparedBy,
+        containerSize: batchInfo.containerSize,
+        itemType: newEntry.itemType,
+        dispatchMode: dispatchMode,
+        fromColdRoom: dispatchMode === 'coldroom',
+        isNonFood: dispatchMode === 'inventory',
+        isManualEntry: dispatchMode === 'manual'
+      };
 
-  if (saveToDatabase && typeof saveToDatabase === 'function') {
-    await saveToDatabase('sales', {
-      dish_name: easthamSalesEntry.dishName,
-      location: easthamSalesEntry.location,
-      received_portions: easthamSalesEntry.receivedPortions,
-      remaining_portions: easthamSalesEntry.remainingPortions,
-      updated_by: easthamSalesEntry.updatedBy,
-      auto_created: true,
-      batch_number: easthamSalesEntry.batchNumber,
-      expiry_date: easthamSalesEntry.expiryDate,
-      date_made: easthamSalesEntry.dateMade,
-      prepared_by: easthamSalesEntry.preparedBy,
-      container_size: easthamSalesEntry.containerSize,
-      item_type: easthamSalesEntry.itemType,
-      // ADD THESE TO DATABASE SAVE TOO
-      dispatch_mode: dispatchMode,  // <-- ADD THIS
-      from_cold_room: dispatchMode === 'coldroom',  // <-- ADD THIS
-      is_non_food: dispatchMode === 'inventory',  // <-- ADD THIS
-      is_manual_entry: dispatchMode === 'manual'  // <-- ADD THIS
-    });
-  }
+      if (saveToDatabase && typeof saveToDatabase === 'function') {
+        await saveToDatabase('sales', {
+          dish_name: easthamSalesEntry.dishName,
+          location: easthamSalesEntry.location,
+          received_portions: easthamSalesEntry.receivedPortions,
+          remaining_portions: easthamSalesEntry.remainingPortions,
+          date: easthamSalesEntry.date,  // <-- ADD THIS LINE - CRITICAL!
+          updated_by: easthamSalesEntry.updatedBy,
+          auto_created: true,
+          batch_number: easthamSalesEntry.batchNumber,
+          expiry_date: easthamSalesEntry.expiryDate,
+          date_made: easthamSalesEntry.dateMade,
+          prepared_by: easthamSalesEntry.preparedBy,
+          container_size: easthamSalesEntry.containerSize,
+          item_type: easthamSalesEntry.itemType,
+          dispatch_mode: dispatchMode,
+          from_cold_room: dispatchMode === 'coldroom',
+          is_non_food: dispatchMode === 'inventory',
+          is_manual_entry: dispatchMode === 'manual'
+        });
+      }
 
-  setSales && setSales(prev => [...prev, easthamSalesEntry]);
-}
+      setSales && setSales(prev => [...prev, easthamSalesEntry]);
+    }
 
-if (bethnal > 0) {
-  const bethnalSalesEntry = {
-    id: sales && sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 200 : 200,
-    dishName: newDispatchEntry.dishName,
-    location: 'Bethnal Green',
-    receivedPortions: bethnal,
-    remainingPortions: bethnal,
-    date: new Date().toISOString().split('T')[0],
-    time: new Date().toLocaleTimeString(),
-    updatedBy: 'Auto-Created from Dispatch',
-    autoCreated: true,
-    batchNumber: batchInfo.batchNumber,
-    expiryDate: batchInfo.expiryDate,
-    dateMade: batchInfo.dateMade,
-    preparedBy: batchInfo.preparedBy,
-    containerSize: batchInfo.containerSize,
-    itemType: newEntry.itemType,
-    // ADD THESE NEW FIELDS
-    dispatchMode: dispatchMode,  // <-- ADD THIS
-    fromColdRoom: dispatchMode === 'coldroom',  // <-- ADD THIS
-    isNonFood: dispatchMode === 'inventory',  // <-- ADD THIS
-    isManualEntry: dispatchMode === 'manual'  // <-- ADD THIS
-  };
+    if (bethnal > 0) {
+      const bethnalSalesEntry = {
+        id: sales && sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 200 : 200,
+        dishName: newDispatchEntry.dishName,
+        location: 'Bethnal Green',
+        receivedPortions: bethnal,
+        remainingPortions: bethnal,
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toLocaleTimeString(),
+        updatedBy: 'Auto-Created from Dispatch',
+        autoCreated: true,
+        batchNumber: batchInfo.batchNumber,
+        expiryDate: batchInfo.expiryDate,
+        dateMade: batchInfo.dateMade,
+        preparedBy: batchInfo.preparedBy,
+        containerSize: batchInfo.containerSize,
+        itemType: newEntry.itemType,
+        dispatchMode: dispatchMode,
+        fromColdRoom: dispatchMode === 'coldroom',
+        isNonFood: dispatchMode === 'inventory',
+        isManualEntry: dispatchMode === 'manual'
+      };
 
-  if (saveToDatabase && typeof saveToDatabase === 'function') {
-    await saveToDatabase('sales', {
-      dish_name: bethnalSalesEntry.dishName,
-      location: bethnalSalesEntry.location,
-      received_portions: bethnalSalesEntry.receivedPortions,
-      remaining_portions: bethnalSalesEntry.remainingPortions,
-      updated_by: bethnalSalesEntry.updatedBy,
-      auto_created: true,
-      batch_number: bethnalSalesEntry.batchNumber,
-      expiry_date: bethnalSalesEntry.expiryDate,
-      date_made: bethnalSalesEntry.dateMade,
-      prepared_by: bethnalSalesEntry.preparedBy,
-      container_size: bethnalSalesEntry.containerSize,
-      item_type: bethnalSalesEntry.itemType,
-      // ADD THESE TO DATABASE SAVE TOO
-      dispatch_mode: dispatchMode,  // <-- ADD THIS
-      from_cold_room: dispatchMode === 'coldroom',  // <-- ADD THIS
-      is_non_food: dispatchMode === 'inventory',  // <-- ADD THIS
-      is_manual_entry: dispatchMode === 'manual'  // <-- ADD THIS
-    });
-  }
+      if (saveToDatabase && typeof saveToDatabase === 'function') {
+        await saveToDatabase('sales', {
+          dish_name: bethnalSalesEntry.dishName,
+          location: bethnalSalesEntry.location,
+          received_portions: bethnalSalesEntry.receivedPortions,
+          remaining_portions: bethnalSalesEntry.remainingPortions,
+          date: bethnalSalesEntry.date,  // <-- ADD THIS LINE - CRITICAL!
+          updated_by: bethnalSalesEntry.updatedBy,
+          auto_created: true,
+          batch_number: bethnalSalesEntry.batchNumber,
+          expiry_date: bethnalSalesEntry.expiryDate,
+          date_made: bethnalSalesEntry.dateMade,
+          prepared_by: bethnalSalesEntry.preparedBy,
+          container_size: bethnalSalesEntry.containerSize,
+          item_type: bethnalSalesEntry.itemType,
+          dispatch_mode: dispatchMode,
+          from_cold_room: dispatchMode === 'coldroom',
+          is_non_food: dispatchMode === 'inventory',
+          is_manual_entry: dispatchMode === 'manual'
+        });
+      }
 
-  setSales && setSales(prev => [...prev, bethnalSalesEntry]);
-}
+      setSales && setSales(prev => [...prev, bethnalSalesEntry]);
+    }
     // Mark prep item as processed if from prep
     if (dispatchMode === 'prep' && newDispatchEntry.prepId && setPrepLog) {
       setPrepLog(prev => prev.map(p =>

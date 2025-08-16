@@ -125,11 +125,20 @@ const EnhancedSales = ({
   };
 
   // Initialize stock data from sales and dispatch
+  // Initialize stock data from sales and dispatch
   useEffect(() => {
     initializeStockData();
-  }, [sales, dispatch, selectedLocation, prepLog]);
+  }, [sales.length, dispatch.length, selectedLocation]); // Only re-run when data count changes
 
   const initializeStockData = () => {
+
+    // ADD THESE DEBUG LINES
+  console.log('=== SALES TRACKER DEBUG ===');
+  console.log('All sales data:', sales);
+  console.log('All dispatch data:', dispatch);
+  console.log('Selected location:', selectedLocation);
+  console.log('Today date:', new Date().toISOString().split('T')[0]);
+
     const allDishes = getDishNames();
     const locationStock = {};
     const todayDate = new Date().toISOString().split('T')[0];

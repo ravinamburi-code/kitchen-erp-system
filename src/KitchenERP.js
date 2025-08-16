@@ -215,58 +215,79 @@ const KitchenERP = () => {
       } catch (error) {
         console.error('Error loading prep log:', error);
       }
-
       // Load dispatch
-      try {
-        const { data: dispatchData } = await supabase
-          .from('dispatch')
-          .select('*')
-          .order('created_at', { ascending: false });
+  try {
+    const { data: dispatchData } = await supabase
+      .from('dispatch')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-        if (dispatchData) {
-          const formattedDispatch = dispatchData.map(item => ({
-            id: item.id,
-            date: item.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-            dishName: item.dish_name,
-            totalCooked: item.total_cooked,
-            easthamSent: item.eastham_sent,
-            bethnalSent: item.bethnal_sent,
-            coldRoomStock: item.cold_room_stock
-          }));
-          setDispatch(formattedDispatch);
-          console.log('Dispatch loaded:', formattedDispatch.length, 'items');
-        }
-      } catch (error) {
-        console.error('Error loading dispatch:', error);
-      }
+    if (dispatchData) {
+      const formattedDispatch = dispatchData.map(item => ({
+        id: item.id,
+        date: item.date || item.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+        dishName: item.dish_name,
+        totalCooked: item.total_cooked,
+        easthamSent: item.eastham_sent,
+        bethnalSent: item.bethnal_sent,
+        coldRoomStock: item.cold_room_stock,
+        batchNumber: item.batch_number,
+        expiryDate: item.expiry_date,
+        dateMade: item.date_made,
+        preparedBy: item.prepared_by,
+        containerSize: item.container_size,
+        dispatchTime: item.dispatch_time || item.created_at,
+        dispatchType: item.dispatch_type || 'prep',
+        itemType: item.item_type || 'food'
+      }));
+      setDispatch(formattedDispatch);
+      console.log('Dispatch loaded:', formattedDispatch.length, 'items');
+    }
+  } catch (error) {
+    console.error('Error loading dispatch:', error);
+  } // <-- THIS CLOSING BRACE WAS MISSING
 
-      // Load sales
-      try {
-        const { data: salesData } = await supabase
-          .from('sales')
-          .select('*')
-          .order('created_at', { ascending: false });
+  // Load sales
+  try {
+    const { data: salesData } = await supabase
+      .from('sales')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-        if (salesData) {
-          const formattedSales = salesData.map(item => ({
-            id: item.id,
-            dishName: item.dish_name,
-            location: item.location,
-            receivedPortions: item.received_portions,
-            remainingPortions: item.remaining_portions,
-            date: item.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-            time: new Date(item.created_at).toLocaleTimeString(),
-            updatedBy: item.updated_by,
-            autoCreated: item.auto_created || false,
-            endOfDay: item.end_of_day || false,
-            finalStock: item.final_stock || 0
-          }));
-          setSales(formattedSales);
-          console.log('Sales loaded:', formattedSales.length, 'items');
-        }
-      } catch (error) {
-        console.error('Error loading sales:', error);
-      }
+    if (salesData) {
+      const formattedSales = salesData.map(item => ({
+        id: item.id,
+        dishName: item.dish_name,
+        location: item.location,
+        receivedPortions: item.received_portions || 0,
+        remainingPortions: item.remaining_portions || 0,
+        date: item.date || item.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+        time: new Date(item.created_at).toLocaleTimeString(),
+        updatedBy: item.updated_by,
+        autoCreated: item.auto_created || false,
+        endOfDay: item.end_of_day || false,
+        finalStock: item.final_stock || 0,
+        dispatchMode: item.dispatch_mode || 'prep',
+        fromColdRoom: item.from_cold_room || false,
+        isNonFood: item.is_non_food || false,
+        isManualEntry: item.is_manual_entry || false,
+        itemType: item.item_type || 'food',
+        batchNumber: item.batch_number,
+        expiryDate: item.expiry_date,
+        dateMade: item.date_made,
+        preparedBy: item.prepared_by,
+        containerSize: item.container_size,
+        storageLocation: item.storage_location || 'Fridge',
+        closedDate: item.closed_date,
+        closedTime: item.closed_time,
+        soldPortions: item.sold_portions
+      }));
+      setSales(formattedSales);
+      console.log('Sales loaded:', formattedSales.length, 'items');
+    }
+  } catch (error) {
+    console.error('Error loading sales:', error);
+  }
 
       // Load waste log
       try {
